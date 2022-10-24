@@ -1,7 +1,9 @@
 ---
 # Gather certificate info
 -
-  # Hosts: Gather SM certificate info
+  ############################################################################
+  #                        SESSION MANAGER CERTIFICATES                      #
+  ############################################################################
   hosts: sm
   gather_facts: False
 
@@ -14,6 +16,7 @@
     - name: smconfig
       ansible.builtin.shell: sudo /opt/Avaya/bin/smconfig
       register: smconfig
+      ignore_unreachable: yes
 
     ##################### SECURITYMODULE_SIP CERTIFICATE #####################
     - name: securitymodule_sip_certificate_chain
@@ -25,29 +28,32 @@
         port: 5061
       register: rv
       delegate_to: smgr
+      when: smconfig.stdout is defined
     
     - name: securitymodule_sip_certificate
       community.crypto.x509_certificate_info:
         content: "{{ rv.certs | first | join }}"
-      delegate_to: localhost
       register: cert
+      delegate_to: localhost
+      when: rv.certs is defined
 
     - name: dump_securitymodule_sip_certificate
       vars:
         certname: securitymodule_sip
-        pgrp: "{{ group_names | first }}"
-        cgrp: "{{ group_names | last }}"
-        scn: "{{ cert.subject.commonName }}"
-        icn: "{{ cert.issuer.commonName }}"
-        notaf: "{{ ( cert.not_after | to_datetime('%Y%m%d%H%M%SZ') ) }}"
-        notbf: "{{ ( cert.not_before | to_datetime('%Y%m%d%H%M%SZ') ) }}"
-        serial: "{{ cert.serial_number }}"
+        pgrp: "{{ group_names | first | default('') }}"
+        cgrp: "{{ group_names | last | default('') }}"
+        scn: "{{ cert.subject.commonName | default('') }}"
+        icn: "{{ cert.issuer.commonName | default('') }}"
+        notaf: "{{ (cert.not_after | to_datetime_with_default('%Y%m%d%H%M%SZ')) }}"
+        notbf: "{{ (cert.not_before | to_datetime_with_default('%Y%m%d%H%M%SZ')) }}"
+        serial: "{{ cert.serial_number | int2hexstr }}"
       lineinfile:
-        line: "{{ inventory_hostname }},{{ ansible_host }},{{ pgrp }},{{ cgrp }},{{ certname }},{{ scn }},{{ icn }},{{ notbf }},{{ notaf }},{{ serial | int2hex }}"
+        line: "{{ inventory_hostname }},{{ ansible_host }},{{ pgrp }},{{ cgrp }},{{ certname }},{{ scn }},{{ icn }},{{ notbf }},{{ notaf }},{{ serial }}"
         insertafter: EOF
         dest: "{{ outfile }}"
         create: yes
       delegate_to: localhost
+      ignore_errors: true
 
     ##################### SECURITYMODULE_HTTP CERTIFICATE ####################
     - name: securitymodule_http_certificate_chain
@@ -59,29 +65,32 @@
         port: 443
       register: rv
       delegate_to: smgr
+      when: smconfig.stdout is defined
     
     - name: securitymodule_http_certificate
       community.crypto.x509_certificate_info:
         content: "{{ rv.certs | first | join }}"
-      delegate_to: localhost
       register: cert
+      delegate_to: localhost
+      when: rv.certs is defined
 
     - name: dump_securitymodule_http_certificate
       vars:
         certname: securitymodule_http
-        pgrp: "{{ group_names | first }}"
-        cgrp: "{{ group_names | last }}"
-        scn: "{{ cert.subject.commonName }}"
-        icn: "{{ cert.issuer.commonName }}"
-        notaf: "{{ ( cert.not_after | to_datetime('%Y%m%d%H%M%SZ') ) }}"
-        notbf: "{{ ( cert.not_before | to_datetime('%Y%m%d%H%M%SZ') ) }}"
-        serial: "{{ cert.serial_number }}"
+        pgrp: "{{ group_names | first | default('') }}"
+        cgrp: "{{ group_names | last | default('') }}"
+        scn: "{{ cert.subject.commonName | default('') }}"
+        icn: "{{ cert.issuer.commonName | default('') }}"
+        notaf: "{{ (cert.not_after | to_datetime_with_default('%Y%m%d%H%M%SZ')) }}"
+        notbf: "{{ (cert.not_before | to_datetime_with_default('%Y%m%d%H%M%SZ')) }}"
+        serial: "{{ cert.serial_number | int2hexstr }}"
       lineinfile:
-        line: "{{ inventory_hostname }},{{ ansible_host }},{{ pgrp }},{{ cgrp }},{{ certname }},{{ scn }},{{ icn }},{{ notbf }},{{ notaf }},{{ serial | int2hex }}"
+        line: "{{ inventory_hostname }},{{ ansible_host }},{{ pgrp }},{{ cgrp }},{{ certname }},{{ scn }},{{ icn }},{{ notbf }},{{ notaf }},{{ serial }}"
         insertafter: EOF
         dest: "{{ outfile }}"
         create: yes
       delegate_to: localhost
+      ignore_errors: true
     
     ############################ MGMT CERTIFICATE ############################
     - name: mgmt_certificate_chain
@@ -90,29 +99,32 @@
         port: 2009
       register: rv
       delegate_to: smgr
+      ignore_unreachable: yes
     
     - name: mgmt_certificate
       community.crypto.x509_certificate_info:
         content: "{{ rv.certs | first | join }}"
-      delegate_to: localhost
       register: cert
+      delegate_to: localhost
+      when: rv.certs is defined
 
     - name: dump_mgmt_certificate
       vars:
         certname: mgmt
-        pgrp: "{{ group_names | first }}"
-        cgrp: "{{ group_names | last }}"
-        scn: "{{ cert.subject.commonName }}"
-        icn: "{{ cert.issuer.commonName }}"
-        notaf: "{{ ( cert.not_after | to_datetime('%Y%m%d%H%M%SZ') ) }}"
-        notbf: "{{ ( cert.not_before | to_datetime('%Y%m%d%H%M%SZ') ) }}"
-        serial: "{{ cert.serial_number }}"
+        pgrp: "{{ group_names | first | default('') }}"
+        cgrp: "{{ group_names | last | default('') }}"
+        scn: "{{ cert.subject.commonName | default('') }}"
+        icn: "{{ cert.issuer.commonName | default('') }}"
+        notaf: "{{ (cert.not_after | to_datetime_with_default('%Y%m%d%H%M%SZ')) }}"
+        notbf: "{{ (cert.not_before | to_datetime_with_default('%Y%m%d%H%M%SZ')) }}"
+        serial: "{{ cert.serial_number | int2hexstr }}"
       lineinfile:
-        line: "{{ inventory_hostname }},{{ ansible_host }},{{ pgrp }},{{ cgrp }},{{ certname }},{{ scn }},{{ icn }},{{ notbf }},{{ notaf }},{{ serial | int2hex }}"
+        line: "{{ inventory_hostname }},{{ ansible_host }},{{ pgrp }},{{ cgrp }},{{ certname }},{{ scn }},{{ icn }},{{ notbf }},{{ notaf }},{{ serial }}"
         insertafter: EOF
         dest: "{{ outfile }}"
         create: yes
       delegate_to: localhost
+      ignore_errors: true
 
     ########################## POSTGRES CERTIFICATE ##########################
     - name: postgres_certificate_chain
@@ -121,29 +133,32 @@
         port: 5432
         starttls: postgres
       register: rv
+      ignore_unreachable: yes
     
     - name: postgres_certificate
       community.crypto.x509_certificate_info:
         content: "{{ rv.certs | first | join }}"
-      delegate_to: localhost
       register: cert
-
+      delegate_to: localhost
+      when: rv.certs is defined
+    
     - name: dump_postgres_certificate
       vars:
         certname: postgres
-        pgrp: "{{ group_names | first }}"
-        cgrp: "{{ group_names | last }}"
-        scn: "{{ cert.subject.commonName }}"
-        icn: "{{ cert.issuer.commonName }}"
-        notaf: "{{ ( cert.not_after | to_datetime('%Y%m%d%H%M%SZ') ) }}"
-        notbf: "{{ ( cert.not_before | to_datetime('%Y%m%d%H%M%SZ') ) }}"
-        serial: "{{ cert.serial_number }}"
+        pgrp: "{{ group_names | first | default('') }}"
+        cgrp: "{{ group_names | last | default('') }}"
+        scn: "{{ cert.subject.commonName | default('') }}"
+        icn: "{{ cert.issuer.commonName | default('') }}"
+        notaf: "{{ (cert.not_after | to_datetime_with_default('%Y%m%d%H%M%SZ')) }}"
+        notbf: "{{ (cert.not_before | to_datetime_with_default('%Y%m%d%H%M%SZ')) }}"
+        serial: "{{ cert.serial_number | int2hexstr }}"
       lineinfile:
-        line: "{{ inventory_hostname }},{{ ansible_host }},{{ pgrp }},{{ cgrp }},{{ certname }},{{ scn }},{{ icn }},{{ notbf }},{{ notaf }},{{ serial | int2hex }}"
+        line: "{{ inventory_hostname }},{{ ansible_host }},{{ pgrp }},{{ cgrp }},{{ certname }},{{ scn }},{{ icn }},{{ notbf }},{{ notaf }},{{ serial }}"
         insertafter: EOF
         dest: "{{ outfile }}"
         create: yes
       delegate_to: localhost
+      ignore_errors: true
     
     ########################## SYSLOG CERTIFICATE ##########################
     - name: syslog_certificate_chain
@@ -159,29 +174,31 @@
         ident_cert: "{{ rv['content'] | b64decode }}"
       community.crypto.x509_certificate_info:
         content: "{{ ident_cert }}"
-      delegate_to: localhost
       register: cert
-      ignore_errors: true
+      delegate_to: localhost
+      when: rv.content is defined
 
     - name: dump_syslog_certificate
       vars:
         certname: syslog
-        pgrp: "{{ group_names | first }}"
-        cgrp: "{{ group_names | last }}"
-        scn: "{{ cert.subject.commonName }}"
-        icn: "{{ cert.issuer.commonName }}"
-        notaf: "{{ ( cert.not_after | to_datetime('%Y%m%d%H%M%SZ') ) }}"
-        notbf: "{{ ( cert.not_before | to_datetime('%Y%m%d%H%M%SZ') ) }}"
-        serial: "{{ cert.serial_number }}"
+        pgrp: "{{ group_names | first | default('') }}"
+        cgrp: "{{ group_names | last | default('') }}"
+        scn: "{{ cert.subject.commonName | default('') }}"
+        icn: "{{ cert.issuer.commonName | default('') }}"
+        notaf: "{{ (cert.not_after | to_datetime_with_default('%Y%m%d%H%M%SZ')) }}"
+        notbf: "{{ (cert.not_before | to_datetime_with_default('%Y%m%d%H%M%SZ')) }}"
+        serial: "{{ cert.serial_number | int2hexstr }}"
       lineinfile:
-        line: "{{ inventory_hostname }},{{ ansible_host }},{{ pgrp }},{{ cgrp }},{{ certname }},{{ scn }},{{ icn }},{{ notbf }},{{ notaf }},{{ serial | int2hex }}"
+        line: "{{ inventory_hostname }},{{ ansible_host }},{{ pgrp }},{{ cgrp }},{{ certname }},{{ scn }},{{ icn }},{{ notbf }},{{ notaf }},{{ serial }}"
         insertafter: EOF
         dest: "{{ outfile }}"
         create: yes
       delegate_to: localhost
       ignore_errors: true
 -
-  # Hosts: Gather SM certificate info
+  ############################################################################
+  #                         SYSTEM MANAGER CERTIFICATES                      #
+  ############################################################################
   hosts: smgr
   gather_facts: False
 
@@ -197,29 +214,32 @@
         host: "{{ ansible_host }}"
         port: 52233
       register: rv
+      ignore_unreachable: yes
     
     - name: weblm_certificate
       community.crypto.x509_certificate_info:
         content: "{{ rv.certs | first | join }}"
-      delegate_to: localhost
       register: cert
+      delegate_to: localhost
+      when: rv.content is defined
 
     - name: dump_weblm_certificate
       vars:
         certname: weblm
-        pgrp: "{{ group_names | first }}"
-        cgrp: "{{ group_names | last }}"
-        scn: "{{ cert.subject.commonName }}"
-        icn: "{{ cert.issuer.commonName }}"
-        notaf: "{{ ( cert.not_after | to_datetime('%Y%m%d%H%M%SZ') ) }}"
-        notbf: "{{ ( cert.not_before | to_datetime('%Y%m%d%H%M%SZ') ) }}"
-        serial: "{{ cert.serial_number }}"
+        pgrp: "{{ group_names | first | default('') }}"
+        cgrp: "{{ group_names | last | default('') }}"
+        scn: "{{ cert.subject.commonName | default('') }}"
+        icn: "{{ cert.issuer.commonName | default('') }}"
+        notaf: "{{ (cert.not_after | to_datetime_with_default('%Y%m%d%H%M%SZ')) }}"
+        notbf: "{{ (cert.not_before | to_datetime_with_default('%Y%m%d%H%M%SZ')) }}"
+        serial: "{{ cert.serial_number | int2hexstr }}"
       lineinfile:
-        line: "{{ inventory_hostname }},{{ ansible_host }},{{ pgrp }},{{ cgrp }},{{ certname }},{{ scn }},{{ icn }},{{ notbf }},{{ notaf }},{{ serial | int2hex }}"
+        line: "{{ inventory_hostname }},{{ ansible_host }},{{ pgrp }},{{ cgrp }},{{ certname }},{{ scn }},{{ icn }},{{ notbf }},{{ notaf }},{{ serial }}"
         insertafter: EOF
         dest: "{{ outfile }}"
         create: yes
       delegate_to: localhost
+      ignore_errors: true
 
     ########################### WEBLM CERTIFICATE ###########################
     - name: container_tls_chain
@@ -227,29 +247,32 @@
         host: "{{ ansible_host }}"
         port: 443
       register: rv
+      ignore_unreachable: yes
     
     - name: container_tls_certificate
       community.crypto.x509_certificate_info:
         content: "{{ rv.certs | first | join }}"
-      delegate_to: localhost
       register: cert
+      delegate_to: localhost
+      when: rv.certs is defined
 
     - name: dump_container_tls_certificate
       vars:
         certname: container_tls
-        pgrp: "{{ group_names | first }}"
-        cgrp: "{{ group_names | last }}"
-        scn: "{{ cert.subject.commonName }}"
-        icn: "{{ cert.issuer.commonName }}"
-        notaf: "{{ ( cert.not_after | to_datetime('%Y%m%d%H%M%SZ') ) }}"
-        notbf: "{{ ( cert.not_before | to_datetime('%Y%m%d%H%M%SZ') ) }}"
-        serial: "{{ cert.serial_number }}"
+        pgrp: "{{ group_names | first | default('') }}"
+        cgrp: "{{ group_names | last | default('') }}"
+        scn: "{{ cert.subject.commonName | default('') }}"
+        icn: "{{ cert.issuer.commonName | default('') }}"
+        notaf: "{{ (cert.not_after | to_datetime_with_default('%Y%m%d%H%M%SZ')) }}"
+        notbf: "{{ (cert.not_before | to_datetime_with_default('%Y%m%d%H%M%SZ')) }}"
+        serial: "{{ cert.serial_number | int2hexstr }}"
       lineinfile:
-        line: "{{ inventory_hostname }},{{ ansible_host }},{{ pgrp }},{{ cgrp }},{{ certname }},{{ scn }},{{ icn }},{{ notbf }},{{ notaf }},{{ serial | int2hex }}"
+        line: "{{ inventory_hostname }},{{ ansible_host }},{{ pgrp }},{{ cgrp }},{{ certname }},{{ scn }},{{ icn }},{{ notbf }},{{ notaf }},{{ serial }}"
         insertafter: EOF
         dest: "{{ outfile }}"
         create: yes
       delegate_to: localhost
+      ignore_errors: true
 
     ######################### DATA_STORE CERTIFICATE #########################
     - name: data_store_certificate_chain
@@ -258,29 +281,32 @@
         port: 5432
         starttls: postgres
       register: rv
-    
+      ignore_unreachable: yes
+
     - name: data_store_certificate
       community.crypto.x509_certificate_info:
         content: "{{ rv.certs | first | join }}"
       delegate_to: localhost
       register: cert
+      when: rv.certs is defined
 
     - name: dump_data_store_certificate
       vars:
         certname: data_store
-        pgrp: "{{ group_names | first }}"
-        cgrp: "{{ group_names | last }}"
-        scn: "{{ cert.subject.commonName }}"
-        icn: "{{ cert.issuer.commonName }}"
-        notaf: "{{ ( cert.not_after | to_datetime('%Y%m%d%H%M%SZ') ) }}"
-        notbf: "{{ ( cert.not_before | to_datetime('%Y%m%d%H%M%SZ') ) }}"
-        serial: "{{ cert.serial_number }}"
+        pgrp: "{{ group_names | first | default('') }}"
+        cgrp: "{{ group_names | last | default('') }}"
+        scn: "{{ cert.subject.commonName | default('') }}"
+        icn: "{{ cert.issuer.commonName | default('') }}"
+        notaf: "{{ (cert.not_after | to_datetime_with_default('%Y%m%d%H%M%SZ')) }}"
+        notbf: "{{ (cert.not_before | to_datetime_with_default('%Y%m%d%H%M%SZ')) }}"
+        serial: "{{ cert.serial_number | int2hexstr }}"
       lineinfile:
-        line: "{{ inventory_hostname }},{{ ansible_host }},{{ pgrp }},{{ cgrp }},{{ certname }},{{ scn }},{{ icn }},{{ notbf }},{{ notaf }},{{ serial | int2hex }}"
+        line: "{{ inventory_hostname }},{{ ansible_host }},{{ pgrp }},{{ cgrp }},{{ certname }},{{ scn }},{{ icn }},{{ notbf }},{{ notaf }},{{ serial }}"
         insertafter: EOF
         dest: "{{ outfile }}"
         create: yes
       delegate_to: localhost
+      ignore_errors: true
 
     ########################### PSQLSU CERTIFICATE ###########################
     - name: psqlSU_certificate_chain
@@ -288,6 +314,7 @@
         src: /opt/Avaya/JBoss/wildfly-10.1.0.Final/avmgmt/configuration/tm/keystore/psqlSU.pem
       register: rv
       become: yes
+      ignore_unreachable: yes
 
     - name: psqlSU_certificate
       vars:
@@ -297,23 +324,25 @@
         content: "{{ ident_cert }}"
       delegate_to: localhost
       register: cert
+      when: rv.content is defined
 
     - name: dump_psqlSU_certificate
       vars:
         certname: psqlSU
-        pgrp: "{{ group_names | first }}"
-        cgrp: "{{ group_names | last }}"
-        scn: "{{ cert.subject.commonName }}"
-        icn: "{{ cert.issuer.commonName }}"
-        notaf: "{{ ( cert.not_after | to_datetime('%Y%m%d%H%M%SZ') ) }}"
-        notbf: "{{ ( cert.not_before | to_datetime('%Y%m%d%H%M%SZ') ) }}"
-        serial: "{{ cert.serial_number }}"
+        pgrp: "{{ group_names | first | default('') }}"
+        cgrp: "{{ group_names | last | default('') }}"
+        scn: "{{ cert.subject.commonName | default('') }}"
+        icn: "{{ cert.issuer.commonName | default('') }}"
+        notaf: "{{ (cert.not_after | to_datetime_with_default('%Y%m%d%H%M%SZ')) }}"
+        notbf: "{{ (cert.not_before | to_datetime_with_default('%Y%m%d%H%M%SZ')) }}"
+        serial: "{{ cert.serial_number | int2hexstr }}"
       lineinfile:
-        line: "{{ inventory_hostname }},{{ ansible_host }},{{ pgrp }},{{ cgrp }},{{ certname }},{{ scn }},{{ icn }},{{ notbf }},{{ notaf }},{{ serial | int2hex }}"
+        line: "{{ inventory_hostname }},{{ ansible_host }},{{ pgrp }},{{ cgrp }},{{ certname }},{{ scn }},{{ icn }},{{ notbf }},{{ notaf }},{{ serial }}"
         insertafter: EOF
         dest: "{{ outfile }}"
         create: yes
       delegate_to: localhost
+      ignore_errors: true
 
     ########################### SYSLOG CERTIFICATE ###########################
     - name: syslog_certificate_chain
@@ -321,6 +350,7 @@
         src: /opt/Avaya/JBoss/wildfly-10.1.0.Final/avmgmt/configuration/tm/keystore/syslog_keystore.pem
       register: rv
       become: yes
+      ignore_unreachable: yes
 
     - name: syslog_certificate
       vars:
@@ -328,27 +358,31 @@
         ident_cert: "{{ rv['content'] | b64decode }}"
       community.crypto.x509_certificate_info:
         content: "{{ ident_cert }}"
-      delegate_to: localhost
       register: cert
+      delegate_to: localhost
+      when: rv.content is defined
 
     - name: dump_syslog_certificate
       vars:
         certname: syslog
-        pgrp: "{{ group_names | first }}"
-        cgrp: "{{ group_names | last }}"
-        scn: "{{ cert.subject.commonName }}"
-        icn: "{{ cert.issuer.commonName }}"
-        notaf: "{{ ( cert.not_after | to_datetime('%Y%m%d%H%M%SZ') ) }}"
-        notbf: "{{ ( cert.not_before | to_datetime('%Y%m%d%H%M%SZ') ) }}"
-        serial: "{{ cert.serial_number }}"
+        pgrp: "{{ group_names | first | default('') }}"
+        cgrp: "{{ group_names | last | default('') }}"
+        scn: "{{ cert.subject.commonName | default('') }}"
+        icn: "{{ cert.issuer.commonName | default('') }}"
+        notaf: "{{ (cert.not_after | to_datetime_with_default('%Y%m%d%H%M%SZ')) }}"
+        notbf: "{{ (cert.not_before | to_datetime_with_default('%Y%m%d%H%M%SZ')) }}"
+        serial: "{{ cert.serial_number | int2hexstr }}"
       lineinfile:
-        line: "{{ inventory_hostname }},{{ ansible_host }},{{ pgrp }},{{ cgrp }},{{ certname }},{{ scn }},{{ icn }},{{ notbf }},{{ notaf }},{{ serial | int2hex }}"
+        line: "{{ inventory_hostname }},{{ ansible_host }},{{ pgrp }},{{ cgrp }},{{ certname }},{{ scn }},{{ icn }},{{ notbf }},{{ notaf }},{{ serial }}"
         insertafter: EOF
         dest: "{{ outfile }}"
         create: yes
       delegate_to: localhost
+      ignore_errors: true
 -
-  # Hosts: Gather SM certificate info
+  ############################################################################
+  #                              AADS CERTIFICATES                           #
+  ############################################################################
   hosts: aads
   gather_facts: False
 
@@ -365,89 +399,98 @@
         port: 443
       register: rv
       delegate_to: smgr
+      ignore_unreachable: yes
     
     - name: application_certificate
       community.crypto.x509_certificate_info:
         content: "{{ rv.certs | first | join }}"
-      delegate_to: localhost
       register: cert
+      delegate_to: localhost
+      when: rv.certs is defined
 
     - name: dump_application_certificate
       vars:
         certname: application
-        pgrp: "{{ group_names | first }}"
-        cgrp: "{{ group_names | last }}"
-        scn: "{{ cert.subject.commonName }}"
-        icn: "{{ cert.issuer.commonName }}"
-        notaf: "{{ ( cert.not_after | to_datetime('%Y%m%d%H%M%SZ') ) }}"
-        notbf: "{{ ( cert.not_before | to_datetime('%Y%m%d%H%M%SZ') ) }}"
-        serial: "{{ cert.serial_number }}"
+        pgrp: "{{ group_names | first | default('') }}"
+        cgrp: "{{ group_names | last | default('') }}"
+        scn: "{{ cert.subject.commonName | default('') }}"
+        icn: "{{ cert.issuer.commonName | default('') }}"
+        notaf: "{{ (cert.not_after | to_datetime_with_default('%Y%m%d%H%M%SZ')) }}"
+        notbf: "{{ (cert.not_before | to_datetime_with_default('%Y%m%d%H%M%SZ')) }}"
+        serial: "{{ cert.serial_number | int2hexstr }}"
       lineinfile:
-        line: "{{ inventory_hostname }},{{ ansible_host }},{{ pgrp }},{{ cgrp }},{{ certname }},{{ scn }},{{ icn }},{{ notbf }},{{ notaf }},{{ serial | int2hex }}"
+        line: "{{ inventory_hostname }},{{ ansible_host }},{{ pgrp }},{{ cgrp }},{{ certname }},{{ scn }},{{ icn }},{{ notbf }},{{ notaf }},{{ serial }}"
         insertafter: EOF
         dest: "{{ outfile }}"
         create: yes
       delegate_to: localhost
+      ignore_errors: true
 
-    ########################## INTERNAL CERTIFICATE #########################
+    ########################### INTERNAL CERTIFICATE #########################
     - name: internal_certificate_chain
       getcerts:
         host: "{{ ansible_host }}"
         port: 8458
       register: rv
       delegate_to: smgr
+      ignore_unreachable: yes
     
     - name: internal_certificate
       community.crypto.x509_certificate_info:
         content: "{{ rv.certs | first | join }}"
-      delegate_to: localhost
       register: cert
+      delegate_to: localhost
+      when: rv.certs is defined
 
     - name: dump_internal_certificate
       vars:
         certname: internal
-        pgrp: "{{ group_names | first }}"
-        cgrp: "{{ group_names | last }}"
-        scn: "{{ cert.subject.commonName }}"
-        icn: "{{ cert.issuer.commonName }}"
-        notaf: "{{ ( cert.not_after | to_datetime('%Y%m%d%H%M%SZ') ) }}"
-        notbf: "{{ ( cert.not_before | to_datetime('%Y%m%d%H%M%SZ') ) }}"
-        serial: "{{ cert.serial_number }}"
+        pgrp: "{{ group_names | first | default('') }}"
+        cgrp: "{{ group_names | last | default('') }}"
+        scn: "{{ cert.subject.commonName | default('') }}"
+        icn: "{{ cert.issuer.commonName | default('') }}"
+        notaf: "{{ (cert.not_after | to_datetime_with_default('%Y%m%d%H%M%SZ')) }}"
+        notbf: "{{ (cert.not_before | to_datetime_with_default('%Y%m%d%H%M%SZ')) }}"
+        serial: "{{ cert.serial_number | int2hexstr }}"
       lineinfile:
-        line: "{{ inventory_hostname }},{{ ansible_host }},{{ pgrp }},{{ cgrp }},{{ certname }},{{ scn }},{{ icn }},{{ notbf }},{{ notaf }},{{ serial | int2hex }}"
+        line: "{{ inventory_hostname }},{{ ansible_host }},{{ pgrp }},{{ cgrp }},{{ certname }},{{ scn }},{{ icn }},{{ notbf }},{{ notaf }},{{ serial }}"
         insertafter: EOF
         dest: "{{ outfile }}"
         create: yes
       delegate_to: localhost
+      ignore_errors: true
 
-    ########################## OAM CERTIFICATE #########################
+    ############################# OAM CERTIFICATE ############################
     - name: oam_certificate_chain
       getcerts:
         host: "{{ ansible_host }}"
         port: 8445
       register: rv
       delegate_to: smgr
+      ignore_unreachable: yes
     
     - name: oam_certificate
       community.crypto.x509_certificate_info:
         content: "{{ rv.certs | first | join }}"
-      delegate_to: localhost
       register: cert
+      delegate_to: localhost
+      when: rv.certs is defined
 
     - name: dump_oam_certificate
       vars:
         certname: oam
-        pgrp: "{{ group_names | first }}"
-        cgrp: "{{ group_names | last }}"
-        scn: "{{ cert.subject.commonName }}"
-        icn: "{{ cert.issuer.commonName }}"
-        notaf: "{{ ( cert.not_after | to_datetime('%Y%m%d%H%M%SZ') ) }}"
-        notbf: "{{ ( cert.not_before | to_datetime('%Y%m%d%H%M%SZ') ) }}"
-        serial: "{{ cert.serial_number }}"
+        pgrp: "{{ group_names | first | default('') }}"
+        cgrp: "{{ group_names | last | default('') }}"
+        scn: "{{ cert.subject.commonName | default('') }}"
+        icn: "{{ cert.issuer.commonName | default('') }}"
+        notaf: "{{ (cert.not_after | to_datetime_with_default('%Y%m%d%H%M%SZ')) }}"
+        notbf: "{{ (cert.not_before | to_datetime_with_default('%Y%m%d%H%M%SZ')) }}"
+        serial: "{{ cert.serial_number | int2hexstr }}"
       lineinfile:
-        line: "{{ inventory_hostname }},{{ ansible_host }},{{ pgrp }},{{ cgrp }},{{ certname }},{{ scn }},{{ icn }},{{ notbf }},{{ notaf }},{{ serial | int2hex }}"
+        line: "{{ inventory_hostname }},{{ ansible_host }},{{ pgrp }},{{ cgrp }},{{ certname }},{{ scn }},{{ icn }},{{ notbf }},{{ notaf }},{{ serial }}"
         insertafter: EOF
         dest: "{{ outfile }}"
         create: yes
       delegate_to: localhost
+      ignore_errors: true
 ...
