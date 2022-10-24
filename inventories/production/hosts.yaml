@@ -1,0 +1,78 @@
+---
+all:
+  children:
+    SMGR:
+      children:
+        smgr:
+          hosts:
+            smgr:
+              ansible_host: 192.168.11.101
+          vars:      
+            ansible_user: combat
+            ansible_ssh_pass: cmb@Dm1n
+    SM:
+      children:
+        sm:
+          hosts:
+            sm:
+              ansible_host: 192.168.11.102
+          vars:
+            ansible_user: combat
+            ansible_ssh_pass: cmb@Dm1n
+    AADS:
+      children:
+        aads:
+          hosts:
+            aads:
+              ansible_host: 192.168.11.104
+          vars:
+            ansible_user: combat
+            ansible_ssh_pass: cmb@Dm1n
+    US:
+      children:
+        us:
+          hosts:
+            aadsus:
+              ansible_host: 192.168.11.105
+          vars:
+            ansible_user: combat
+            ansible_ssh_pass: cmb@Dm1n
+    CM:
+      children:
+        cm:
+          hosts:
+            cm1:
+              ansible_host: 192.168.11.110
+        ess:
+          hosts:
+            ess1:
+              ansible_host: 192.168.11.110
+        lsp:
+          hosts:
+            declsp1:
+              ansible_host: 192.168.11.110
+            drlsp2:
+              ansible_host: 192.168.11.110         
+        vars:
+          ansible_user: ss
+          ansible_ssh_pass: ss
+    IXM:
+      children:
+        ocs:
+          hosts:
+            olcs:
+              ansible_host: 192.168.11.100
+              ansible_user: avaya_svc
+              ansible_password: cmb@Dm1n
+              ansible_connection: winrm
+              ansible_winrm_server_cert_validation: ignore
+        vn:
+          hosts:
+            vns1:
+              ansible_host: 192.168.11.100
+              ansible_user: avaya_svc
+              ansible_password: cmb@Dm1n
+              ansible_winrm_server_cert_validation: ignore
+              ansible_connection: ssh
+              ansible_shell_type: cmd
+...

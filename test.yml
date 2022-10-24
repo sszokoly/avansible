@@ -1,0 +1,453 @@
+---
+# Gather certificate info
+-
+  # Hosts: Gather SM certificate info
+  hosts: sm
+  gather_facts: False
+
+  # Vars: variables that will apply to the play
+  vars:
+    outfile: "certificates.csv"
+
+  # Tasks: the list of tasks that will be executed within the playbook
+  tasks:
+    - name: smconfig
+      ansible.builtin.shell: sudo /opt/Avaya/bin/smconfig
+      register: smconfig
+
+    ##################### SECURITYMODULE_SIP CERTIFICATE #####################
+    - name: securitymodule_sip_certificate_chain
+      vars:
+        secmodip_regex: "Local Security Module: ([^ \n]+)"
+        secmodip: "{{ smconfig.stdout | regex_search(secmodip_regex, '\\1') | first }}"
+      getcerts:
+        host: "{{ secmodip }}"
+        port: 5061
+      register: rv
+      delegate_to: smgr
+    
+    - name: securitymodule_sip_certificate
+      community.crypto.x509_certificate_info:
+        content: "{{ rv.certs | first | join }}"
+      delegate_to: localhost
+      register: cert
+
+    - name: dump_securitymodule_sip_certificate
+      vars:
+        certname: securitymodule_sip
+        pgrp: "{{ group_names | first }}"
+        cgrp: "{{ group_names | last }}"
+        scn: "{{ cert.subject.commonName }}"
+        icn: "{{ cert.issuer.commonName }}"
+        notaf: "{{ ( cert.not_after | to_datetime('%Y%m%d%H%M%SZ') ) }}"
+        notbf: "{{ ( cert.not_before | to_datetime('%Y%m%d%H%M%SZ') ) }}"
+        serial: "{{ cert.serial_number }}"
+      lineinfile:
+        line: "{{ inventory_hostname }},{{ ansible_host }},{{ pgrp }},{{ cgrp }},{{ certname }},{{ scn }},{{ icn }},{{ notbf }},{{ notaf }},{{ serial | int2hex }}"
+        insertafter: EOF
+        dest: "{{ outfile }}"
+        create: yes
+      delegate_to: localhost
+
+    ##################### SECURITYMODULE_HTTP CERTIFICATE ####################
+    - name: securitymodule_http_certificate_chain
+      vars:
+        secmodip_regex: "Local Security Module: ([^ \n]+)"
+        secmodip: "{{ smconfig.stdout | regex_search(secmodip_regex, '\\1') | first }}"
+      getcerts:
+        host: "{{ secmodip }}"
+        port: 443
+      register: rv
+      delegate_to: smgr
+    
+    - name: securitymodule_http_certificate
+      community.crypto.x509_certificate_info:
+        content: "{{ rv.certs | first | join }}"
+      delegate_to: localhost
+      register: cert
+
+    - name: dump_securitymodule_http_certificate
+      vars:
+        certname: securitymodule_http
+        pgrp: "{{ group_names | first }}"
+        cgrp: "{{ group_names | last }}"
+        scn: "{{ cert.subject.commonName }}"
+        icn: "{{ cert.issuer.commonName }}"
+        notaf: "{{ ( cert.not_after | to_datetime('%Y%m%d%H%M%SZ') ) }}"
+        notbf: "{{ ( cert.not_before | to_datetime('%Y%m%d%H%M%SZ') ) }}"
+        serial: "{{ cert.serial_number }}"
+      lineinfile:
+        line: "{{ inventory_hostname }},{{ ansible_host }},{{ pgrp }},{{ cgrp }},{{ certname }},{{ scn }},{{ icn }},{{ notbf }},{{ notaf }},{{ serial | int2hex }}"
+        insertafter: EOF
+        dest: "{{ outfile }}"
+        create: yes
+      delegate_to: localhost
+    
+    ############################ MGMT CERTIFICATE ############################
+    - name: mgmt_certificate_chain
+      getcerts:
+        host: "{{ ansible_host }}"
+        port: 2009
+      register: rv
+      delegate_to: smgr
+    
+    - name: mgmt_certificate
+      community.crypto.x509_certificate_info:
+        content: "{{ rv.certs | first | join }}"
+      delegate_to: localhost
+      register: cert
+
+    - name: dump_mgmt_certificate
+      vars:
+        certname: mgmt
+        pgrp: "{{ group_names | first }}"
+        cgrp: "{{ group_names | last }}"
+        scn: "{{ cert.subject.commonName }}"
+        icn: "{{ cert.issuer.commonName }}"
+        notaf: "{{ ( cert.not_after | to_datetime('%Y%m%d%H%M%SZ') ) }}"
+        notbf: "{{ ( cert.not_before | to_datetime('%Y%m%d%H%M%SZ') ) }}"
+        serial: "{{ cert.serial_number }}"
+      lineinfile:
+        line: "{{ inventory_hostname }},{{ ansible_host }},{{ pgrp }},{{ cgrp }},{{ certname }},{{ scn }},{{ icn }},{{ notbf }},{{ notaf }},{{ serial | int2hex }}"
+        insertafter: EOF
+        dest: "{{ outfile }}"
+        create: yes
+      delegate_to: localhost
+
+    ########################## POSTGRES CERTIFICATE ##########################
+    - name: postgres_certificate_chain
+      getcerts:
+        host: 127.0.0.1
+        port: 5432
+        starttls: postgres
+      register: rv
+    
+    - name: postgres_certificate
+      community.crypto.x509_certificate_info:
+        content: "{{ rv.certs | first | join }}"
+      delegate_to: localhost
+      register: cert
+
+    - name: dump_postgres_certificate
+      vars:
+        certname: postgres
+        pgrp: "{{ group_names | first }}"
+        cgrp: "{{ group_names | last }}"
+        scn: "{{ cert.subject.commonName }}"
+        icn: "{{ cert.issuer.commonName }}"
+        notaf: "{{ ( cert.not_after | to_datetime('%Y%m%d%H%M%SZ') ) }}"
+        notbf: "{{ ( cert.not_before | to_datetime('%Y%m%d%H%M%SZ') ) }}"
+        serial: "{{ cert.serial_number }}"
+      lineinfile:
+        line: "{{ inventory_hostname }},{{ ansible_host }},{{ pgrp }},{{ cgrp }},{{ certname }},{{ scn }},{{ icn }},{{ notbf }},{{ notaf }},{{ serial | int2hex }}"
+        insertafter: EOF
+        dest: "{{ outfile }}"
+        create: yes
+      delegate_to: localhost
+    
+    ########################## SYSLOG CERTIFICATE ##########################
+    - name: syslog_certificate_chain
+      slurp:
+        src: $JBOSS_HOME/standalone/configuration/tm/keystore/syslog_keystore.pem
+      register: rv
+      become: yes
+      ignore_errors: true
+
+    - name: syslog_certificate
+      vars:
+        ident_regex: "(-----BEGIN CERTIFICATE-----.+?-----END CERTIFICATE-----)"
+        ident_cert: "{{ rv['content'] | b64decode }}"
+      community.crypto.x509_certificate_info:
+        content: "{{ ident_cert }}"
+      delegate_to: localhost
+      register: cert
+      ignore_errors: true
+
+    - name: dump_syslog_certificate
+      vars:
+        certname: syslog
+        pgrp: "{{ group_names | first }}"
+        cgrp: "{{ group_names | last }}"
+        scn: "{{ cert.subject.commonName }}"
+        icn: "{{ cert.issuer.commonName }}"
+        notaf: "{{ ( cert.not_after | to_datetime('%Y%m%d%H%M%SZ') ) }}"
+        notbf: "{{ ( cert.not_before | to_datetime('%Y%m%d%H%M%SZ') ) }}"
+        serial: "{{ cert.serial_number }}"
+      lineinfile:
+        line: "{{ inventory_hostname }},{{ ansible_host }},{{ pgrp }},{{ cgrp }},{{ certname }},{{ scn }},{{ icn }},{{ notbf }},{{ notaf }},{{ serial | int2hex }}"
+        insertafter: EOF
+        dest: "{{ outfile }}"
+        create: yes
+      delegate_to: localhost
+      ignore_errors: true
+-
+  # Hosts: Gather SM certificate info
+  hosts: smgr
+  gather_facts: False
+
+  # Vars: variables that will apply to the play
+  vars:
+    outfile: "certificates.csv"
+
+  # Tasks: the list of tasks that will be executed within the playbook
+  tasks:
+    ########################### WEBLM CERTIFICATE ###########################
+    - name: weblm_certificate_chain
+      getcerts:
+        host: "{{ ansible_host }}"
+        port: 52233
+      register: rv
+    
+    - name: weblm_certificate
+      community.crypto.x509_certificate_info:
+        content: "{{ rv.certs | first | join }}"
+      delegate_to: localhost
+      register: cert
+
+    - name: dump_weblm_certificate
+      vars:
+        certname: weblm
+        pgrp: "{{ group_names | first }}"
+        cgrp: "{{ group_names | last }}"
+        scn: "{{ cert.subject.commonName }}"
+        icn: "{{ cert.issuer.commonName }}"
+        notaf: "{{ ( cert.not_after | to_datetime('%Y%m%d%H%M%SZ') ) }}"
+        notbf: "{{ ( cert.not_before | to_datetime('%Y%m%d%H%M%SZ') ) }}"
+        serial: "{{ cert.serial_number }}"
+      lineinfile:
+        line: "{{ inventory_hostname }},{{ ansible_host }},{{ pgrp }},{{ cgrp }},{{ certname }},{{ scn }},{{ icn }},{{ notbf }},{{ notaf }},{{ serial | int2hex }}"
+        insertafter: EOF
+        dest: "{{ outfile }}"
+        create: yes
+      delegate_to: localhost
+
+    ########################### WEBLM CERTIFICATE ###########################
+    - name: container_tls_chain
+      getcerts:
+        host: "{{ ansible_host }}"
+        port: 443
+      register: rv
+    
+    - name: container_tls_certificate
+      community.crypto.x509_certificate_info:
+        content: "{{ rv.certs | first | join }}"
+      delegate_to: localhost
+      register: cert
+
+    - name: dump_container_tls_certificate
+      vars:
+        certname: container_tls
+        pgrp: "{{ group_names | first }}"
+        cgrp: "{{ group_names | last }}"
+        scn: "{{ cert.subject.commonName }}"
+        icn: "{{ cert.issuer.commonName }}"
+        notaf: "{{ ( cert.not_after | to_datetime('%Y%m%d%H%M%SZ') ) }}"
+        notbf: "{{ ( cert.not_before | to_datetime('%Y%m%d%H%M%SZ') ) }}"
+        serial: "{{ cert.serial_number }}"
+      lineinfile:
+        line: "{{ inventory_hostname }},{{ ansible_host }},{{ pgrp }},{{ cgrp }},{{ certname }},{{ scn }},{{ icn }},{{ notbf }},{{ notaf }},{{ serial | int2hex }}"
+        insertafter: EOF
+        dest: "{{ outfile }}"
+        create: yes
+      delegate_to: localhost
+
+    ######################### DATA_STORE CERTIFICATE #########################
+    - name: data_store_certificate_chain
+      getcerts:
+        host: 127.0.0.1
+        port: 5432
+        starttls: postgres
+      register: rv
+    
+    - name: data_store_certificate
+      community.crypto.x509_certificate_info:
+        content: "{{ rv.certs | first | join }}"
+      delegate_to: localhost
+      register: cert
+
+    - name: dump_data_store_certificate
+      vars:
+        certname: data_store
+        pgrp: "{{ group_names | first }}"
+        cgrp: "{{ group_names | last }}"
+        scn: "{{ cert.subject.commonName }}"
+        icn: "{{ cert.issuer.commonName }}"
+        notaf: "{{ ( cert.not_after | to_datetime('%Y%m%d%H%M%SZ') ) }}"
+        notbf: "{{ ( cert.not_before | to_datetime('%Y%m%d%H%M%SZ') ) }}"
+        serial: "{{ cert.serial_number }}"
+      lineinfile:
+        line: "{{ inventory_hostname }},{{ ansible_host }},{{ pgrp }},{{ cgrp }},{{ certname }},{{ scn }},{{ icn }},{{ notbf }},{{ notaf }},{{ serial | int2hex }}"
+        insertafter: EOF
+        dest: "{{ outfile }}"
+        create: yes
+      delegate_to: localhost
+
+    ########################### PSQLSU CERTIFICATE ###########################
+    - name: psqlSU_certificate_chain
+      slurp:
+        src: /opt/Avaya/JBoss/wildfly-10.1.0.Final/avmgmt/configuration/tm/keystore/psqlSU.pem
+      register: rv
+      become: yes
+
+    - name: psqlSU_certificate
+      vars:
+        ident_regex: "(-----BEGIN CERTIFICATE-----.+?-----END CERTIFICATE-----)"
+        ident_cert: "{{ rv['content'] | b64decode }}"
+      community.crypto.x509_certificate_info:
+        content: "{{ ident_cert }}"
+      delegate_to: localhost
+      register: cert
+
+    - name: dump_psqlSU_certificate
+      vars:
+        certname: psqlSU
+        pgrp: "{{ group_names | first }}"
+        cgrp: "{{ group_names | last }}"
+        scn: "{{ cert.subject.commonName }}"
+        icn: "{{ cert.issuer.commonName }}"
+        notaf: "{{ ( cert.not_after | to_datetime('%Y%m%d%H%M%SZ') ) }}"
+        notbf: "{{ ( cert.not_before | to_datetime('%Y%m%d%H%M%SZ') ) }}"
+        serial: "{{ cert.serial_number }}"
+      lineinfile:
+        line: "{{ inventory_hostname }},{{ ansible_host }},{{ pgrp }},{{ cgrp }},{{ certname }},{{ scn }},{{ icn }},{{ notbf }},{{ notaf }},{{ serial | int2hex }}"
+        insertafter: EOF
+        dest: "{{ outfile }}"
+        create: yes
+      delegate_to: localhost
+
+    ########################### SYSLOG CERTIFICATE ###########################
+    - name: syslog_certificate_chain
+      slurp:
+        src: /opt/Avaya/JBoss/wildfly-10.1.0.Final/avmgmt/configuration/tm/keystore/syslog_keystore.pem
+      register: rv
+      become: yes
+
+    - name: syslog_certificate
+      vars:
+        ident_regex: "(-----BEGIN CERTIFICATE-----.+?-----END CERTIFICATE-----)"
+        ident_cert: "{{ rv['content'] | b64decode }}"
+      community.crypto.x509_certificate_info:
+        content: "{{ ident_cert }}"
+      delegate_to: localhost
+      register: cert
+
+    - name: dump_syslog_certificate
+      vars:
+        certname: syslog
+        pgrp: "{{ group_names | first }}"
+        cgrp: "{{ group_names | last }}"
+        scn: "{{ cert.subject.commonName }}"
+        icn: "{{ cert.issuer.commonName }}"
+        notaf: "{{ ( cert.not_after | to_datetime('%Y%m%d%H%M%SZ') ) }}"
+        notbf: "{{ ( cert.not_before | to_datetime('%Y%m%d%H%M%SZ') ) }}"
+        serial: "{{ cert.serial_number }}"
+      lineinfile:
+        line: "{{ inventory_hostname }},{{ ansible_host }},{{ pgrp }},{{ cgrp }},{{ certname }},{{ scn }},{{ icn }},{{ notbf }},{{ notaf }},{{ serial | int2hex }}"
+        insertafter: EOF
+        dest: "{{ outfile }}"
+        create: yes
+      delegate_to: localhost
+-
+  # Hosts: Gather SM certificate info
+  hosts: aads
+  gather_facts: False
+
+  # Vars: variables that will apply to the play
+  vars:
+    outfile: "certificates.csv"
+
+  # Tasks: the list of tasks that will be executed within the playbook
+  tasks:
+    ######################### APPLICATION CERTIFICATE ########################
+    - name: application_certificate_chain
+      getcerts:
+        host: "{{ ansible_host }}"
+        port: 443
+      register: rv
+      delegate_to: smgr
+    
+    - name: application_certificate
+      community.crypto.x509_certificate_info:
+        content: "{{ rv.certs | first | join }}"
+      delegate_to: localhost
+      register: cert
+
+    - name: dump_application_certificate
+      vars:
+        certname: application
+        pgrp: "{{ group_names | first }}"
+        cgrp: "{{ group_names | last }}"
+        scn: "{{ cert.subject.commonName }}"
+        icn: "{{ cert.issuer.commonName }}"
+        notaf: "{{ ( cert.not_after | to_datetime('%Y%m%d%H%M%SZ') ) }}"
+        notbf: "{{ ( cert.not_before | to_datetime('%Y%m%d%H%M%SZ') ) }}"
+        serial: "{{ cert.serial_number }}"
+      lineinfile:
+        line: "{{ inventory_hostname }},{{ ansible_host }},{{ pgrp }},{{ cgrp }},{{ certname }},{{ scn }},{{ icn }},{{ notbf }},{{ notaf }},{{ serial | int2hex }}"
+        insertafter: EOF
+        dest: "{{ outfile }}"
+        create: yes
+      delegate_to: localhost
+
+    ########################## INTERNAL CERTIFICATE #########################
+    - name: internal_certificate_chain
+      getcerts:
+        host: "{{ ansible_host }}"
+        port: 8458
+      register: rv
+      delegate_to: smgr
+    
+    - name: internal_certificate
+      community.crypto.x509_certificate_info:
+        content: "{{ rv.certs | first | join }}"
+      delegate_to: localhost
+      register: cert
+
+    - name: dump_internal_certificate
+      vars:
+        certname: internal
+        pgrp: "{{ group_names | first }}"
+        cgrp: "{{ group_names | last }}"
+        scn: "{{ cert.subject.commonName }}"
+        icn: "{{ cert.issuer.commonName }}"
+        notaf: "{{ ( cert.not_after | to_datetime('%Y%m%d%H%M%SZ') ) }}"
+        notbf: "{{ ( cert.not_before | to_datetime('%Y%m%d%H%M%SZ') ) }}"
+        serial: "{{ cert.serial_number }}"
+      lineinfile:
+        line: "{{ inventory_hostname }},{{ ansible_host }},{{ pgrp }},{{ cgrp }},{{ certname }},{{ scn }},{{ icn }},{{ notbf }},{{ notaf }},{{ serial | int2hex }}"
+        insertafter: EOF
+        dest: "{{ outfile }}"
+        create: yes
+      delegate_to: localhost
+
+    ########################## OAM CERTIFICATE #########################
+    - name: oam_certificate_chain
+      getcerts:
+        host: "{{ ansible_host }}"
+        port: 8445
+      register: rv
+      delegate_to: smgr
+    
+    - name: oam_certificate
+      community.crypto.x509_certificate_info:
+        content: "{{ rv.certs | first | join }}"
+      delegate_to: localhost
+      register: cert
+
+    - name: dump_oam_certificate
+      vars:
+        certname: oam
+        pgrp: "{{ group_names | first }}"
+        cgrp: "{{ group_names | last }}"
+        scn: "{{ cert.subject.commonName }}"
+        icn: "{{ cert.issuer.commonName }}"
+        notaf: "{{ ( cert.not_after | to_datetime('%Y%m%d%H%M%SZ') ) }}"
+        notbf: "{{ ( cert.not_before | to_datetime('%Y%m%d%H%M%SZ') ) }}"
+        serial: "{{ cert.serial_number }}"
+      lineinfile:
+        line: "{{ inventory_hostname }},{{ ansible_host }},{{ pgrp }},{{ cgrp }},{{ certname }},{{ scn }},{{ icn }},{{ notbf }},{{ notaf }},{{ serial | int2hex }}"
+        insertafter: EOF
+        dest: "{{ outfile }}"
+        create: yes
+      delegate_to: localhost
+...

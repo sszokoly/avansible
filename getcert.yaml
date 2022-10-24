@@ -1,0 +1,25 @@
+# Every YAML file should start with three dashes
+---
+-
+  # Hosts: where our play will run and options it will run with
+  hosts: smgr
+  gather_facts: no
+  #connection: local
+  # Vars: variables that will apply to the play, on all target systems
+  
+  # Tasks: the list of tasks that will be executed within the playbook
+  tasks:
+    - name: getcert
+      getcert:
+        host: 127.0.0.1
+        port: 443
+      register: rv
+
+    - name: append to logs
+      lineinfile:
+        line: "{{ ansible_host }}: '{{ rv.cn }}'"
+        insertafter: EOF
+        dest: logs
+      delegate_to: localhost
+
+...
