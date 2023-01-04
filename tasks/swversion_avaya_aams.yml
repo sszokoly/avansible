@@ -1,0 +1,40 @@
+---
+- name: Obtaining AAMS `sysTool -st` output
+  command: sudo /opt/avaya/bin/sysTool.sh -st
+  register: sysversion
+  tags:
+    - aams
+
+- name: Extracting AADS `System layer version`
+  vars:
+    syssp_regex: "System Version           : ([^ \n]+)"
+  set_fact:
+    syssp: "{{ sysversion.stdout | regex_search(syssp_regex, '\\1') | first }}"
+  tags:
+    - aams
+
+- name: Dumping AADS header to '{{ swversion_stdout }}'
+  lineinfile:
+    line: "AVAYA AURA MEDIA SERVER,Latest,AADS,,{{ latest_aams_appsp }},{{ latest_aams_syssp }},,"
+    insertafter: EOF
+    dest: "{{ swversion_stdout }}"
+  delegate_to: localhost
+  tags:
+    - aams
+
+- name: Dumping AADS versions to '{{ swversion_stdout }}'
+  vars:
+    pgrp: "{{ group_names | first | default('') }}"
+    cgrp: "{{ group_names | last | default('') }}"
+    appsp: ""
+    ssp: ""
+    ksp: ""
+  lineinfile:
+    line: "{{ inventory_hostname }},{{ ansible_host }},{{ pgrp }},{{ cgrp }},{{ appsp }},{{ syssp }},{{ ssp }},{{ ksp }}"
+    insertafter: EOF
+    dest: "{{ swversion_stdout }}"
+  delegate_to: localhost
+  ignore_errors: true
+  tags:
+    - aams
+...

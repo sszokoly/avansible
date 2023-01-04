@@ -1,0 +1,40 @@
+---
+- name: Obtaining ASBCE `ipcs-version` output
+  command: sudo /usr/local/ipcs/icu/scripts/ipcs-version
+  register: ipcsversion
+  tags:
+    - asbce
+
+- name: Extracting ASBCE `Application`
+  vars:
+    appsp_regex: "Application             : ([^ \n]+)"
+  set_fact:
+    appsp: "{{ ipcsversion.stdout | regex_search(appsp_regex, '\\1') | first }}"
+  tags:
+    - asbce
+
+- name: Dumping ASBCE header to '{{ swversion_stdout }}'
+  lineinfile:
+    line: "AVAYA SESSION BORDER CONTROLLER FOR ENTERPRISE,Latest,SBCE,,{{ latest_asbce_appsp }},,,"
+    insertafter: EOF
+    dest: "{{ swversion_stdout }}"
+  delegate_to: localhost
+  tags:
+    - asbce
+
+- name: Dumping AADS versions to '{{ swversion_stdout }}'
+  vars:
+    pgrp: "{{ group_names | first | default('') }}"
+    cgrp: "{{ group_names | last | default('') }}"
+    syssp: ""
+    ssp: ""
+    ksp: ""
+  lineinfile:
+    line: "{{ inventory_hostname }},{{ ansible_host }},{{ pgrp }},{{ cgrp }},{{ appsp }},{{ syssp }},{{ ssp }},{{ ksp }}"
+    insertafter: EOF
+    dest: "{{ swversion_stdout }}"
+  delegate_to: localhost
+  ignore_errors: true
+  tags:
+    - asbce
+...

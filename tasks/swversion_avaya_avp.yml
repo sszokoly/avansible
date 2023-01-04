@@ -1,0 +1,47 @@
+---
+- name: Obtaining AVP `swversion` output
+  shell: /opt/avaya/bin/swversion
+  register: swversion
+  tags:
+    - avp
+
+- name: Extracting AVP `Release`
+  vars:
+    appsp_regex: "Release: ([^ \n]+)"
+  set_fact:
+    appsp: "{{ swversion.stdout | regex_search(appsp_regex, '\\1') | first }}"
+  tags:
+    - avp
+
+- name: Extracting AVP SSP
+  vars:
+    ssp_regex: "Security Service Patch: ([^ \n]+)"
+  set_fact:
+    ssp: "{{ swversion.stdout | regex_search(ssp_regex, '\\1') | first }}"
+  tags:
+    - avp
+
+- name: Dumping AVP header to '{{ swversion_stdout }}'
+  lineinfile:
+    line: "AVAYA VIRTUALIZATION PLATFORM,Latest,AVP,,{{ latest_avp_appsp }},,{{ latest_avp_ssp }},"
+    insertafter: EOF
+    dest: "{{ swversion_stdout }}"
+  delegate_to: localhost
+  tags:
+    - avp
+
+- name: Dumping AADS versions to '{{ swversion_stdout }}'
+  vars:
+    pgrp: "{{ group_names | first | default('') }}"
+    cgrp: "{{ group_names | last | default('') }}"
+    syssp: ""
+    ksp: ""
+  lineinfile:
+    line: "{{ inventory_hostname }},{{ ansible_host }},{{ pgrp }},{{ cgrp }},{{ appsp }},{{ syssp }},{{ ssp }},{{ ksp }}"
+    insertafter: EOF
+    dest: "{{ swversion_stdout }}"
+  delegate_to: localhost
+  ignore_errors: true
+  tags:
+    - avp
+...

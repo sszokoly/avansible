@@ -1,0 +1,47 @@
+---
+- name: Obtaining SM `swversion` output
+  command: sudo /opt/Avaya/bin/swversion
+  register: swversion
+  tags:
+    - sm
+
+- name: Extracting SM 'Call Processing' version
+  vars:
+    callp_regex: ".*Call Processing: ([^ \n]+)"
+  set_fact:
+    appsp: "{{ swversion.stdout | regex_search(callp_regex, '\\1') | first }}"
+  tags:
+    - sm
+
+- name: Extracting SM SSP version
+  vars:
+    ssp_regex: "\n([^ ]+).*installed Security Service Pack.*"
+  set_fact:
+    ssp: "{{ swversion.stdout | regex_search(ssp_regex, '\\1') | first }}"
+  tags:
+    - sm
+
+- name: Dumping SM header to '{{ swversion_stdout }}'
+  lineinfile:
+    line: "SESSION MANAGER,Latest,SM,,{{ latest_sm_appsp }},,{{ latest_sm_ssp }},"
+    insertafter: EOF
+    dest: "{{ swversion_stdout }}"
+  delegate_to: localhost
+  tags:
+    - sm
+
+- name: Dumping SM versions to '{{ swversion_stdout }}'
+  vars:
+    pgrp: "{{ group_names | first | default('') }}"
+    cgrp: "{{ group_names | last | default('') }}"
+    syssp: ""
+    ksp: ""
+  lineinfile:
+    line: "{{ inventory_hostname }},{{ ansible_host }},{{ pgrp }},{{ cgrp }},{{ appsp }},{{ syssp }},{{ ssp }},{{ ksp }}"
+    insertafter: EOF
+    dest: "{{ swversion_stdout }}"
+  delegate_to: localhost
+  ignore_errors: true
+  tags:
+    - sm
+...

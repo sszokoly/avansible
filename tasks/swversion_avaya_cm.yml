@@ -1,0 +1,54 @@
+---
+- name: Obtaining CM `swversion` output
+  shell: /opt/ecs/bin/swversion
+  register: swversion
+  tags:
+    - cm
+
+- name: Extracting CM `RTS Version`
+  vars:
+    appsp_regex: "RTS Version:  CM ([^ \n]+)"
+  set_fact:
+    appsp: "{{ swversion.stdout | regex_search(appsp_regex, '\\1') | first }}"
+  tags:
+    - cm
+
+- name: Extracting CM SSP
+  vars:
+    ssp_regex: "(PLAT-[^ \n]+).*activated.*"
+  set_fact:
+    ssp: "{{ swversion.stdout | regex_search(ssp_regex, '\\1') | first }}"
+  tags:
+    - cm
+
+- name: Extracting CM KSP
+  vars:
+    ksp_regex: "(KERNEL-[^ \n]+).*activated.*"
+  set_fact:
+    ksp: "{{ swversion.stdout | regex_search(ksp_regex, '\\1') | first }}"
+  tags:
+    - cm
+
+- name: Dumping CM header to '{{ swversion_stdout }}'
+  lineinfile:
+    line: "AVAYA COMMUNICATION MANAGER,Latest,CM,,{{ latest_cm_appsp }},,{{ latest_cm_ssp }},{{ latest_cm_ksp }}"
+    insertafter: EOF
+    dest: "{{ swversion_stdout }}"
+  delegate_to: localhost
+  tags:
+    - avpu
+
+- name: Dumping CM versions to '{{ swversion_stdout }}'
+  vars:
+    pgrp: "{{ group_names | first | default('') }}"
+    cgrp: "{{ group_names | last | default('') }}"
+    syssp: ""
+  lineinfile:
+    line: "{{ inventory_hostname }},{{ ansible_host }},{{ pgrp }},{{ cgrp }},{{ appsp }},{{ syssp }},{{ ssp }},{{ ksp }}"
+    insertafter: EOF
+    dest: "{{ swversion_stdout }}"
+  delegate_to: localhost
+  ignore_errors: true
+  tags:
+    - avpu
+...

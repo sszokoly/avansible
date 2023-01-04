@@ -1,0 +1,47 @@
+---
+- name: Obtaining SMGR `swversion` output
+  command: /opt/Avaya/vsp/swversion.sh
+  register: swversion
+  tags:
+    - smgr
+
+- name: Extracting SMGR RTS version
+  vars:
+    rts_regex: "RTS Version: SMGR ([^ \n]+)"
+  set_fact:
+    appsp: "{{ swversion.stdout | regex_search(rts_regex, '\\1') | first }}"
+  tags:
+    - smgr
+
+- name: Extracting SMGR SSP version
+  vars:
+    ssp_regex: "SMGR SSP ([^\n]+)\nPatch ([^ ]+)"
+  set_fact:
+    ssp: "{{ swversion.stdout | regex_search(ssp_regex, '\\2') | first }}"
+  tags:
+    - smgr
+
+- name: Dumping SMGR header to '{{ swversion_stdout }}'
+  lineinfile:
+    line: "SYSTEM MANAGER,Latest,SMGR,,{{ latest_smgr_appsp }},,{{ latest_smgr_ssp }},"
+    insertafter: EOF
+    dest: "{{ swversion_stdout }}"
+  delegate_to: localhost
+  tags:
+    - smgr
+
+- name: Dumping SMGR versions to '{{ swversion_stdout }}'
+  vars:
+    pgrp: "{{ group_names | first | default('') }}"
+    cgrp: "{{ group_names | last | default('') }}"
+    syssp: ""
+    ksp: ""
+  lineinfile:
+    line: "{{ inventory_hostname }},{{ ansible_host }},{{ pgrp }},{{ cgrp }},{{ appsp }},{{ syssp }},{{ ssp }},{{ ksp }}"
+    insertafter: EOF
+    dest: "{{ swversion_stdout }}"
+  delegate_to: localhost
+  ignore_errors: true
+  tags:
+    - smgr
+...

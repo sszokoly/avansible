@@ -1,0 +1,53 @@
+---
+- name: Obtaining AADS `svc aads swversion` output
+  command: /opt/Avaya/bin/sys/alias-wrappers/svc-wrapper.sh aads swversion
+  register: swversion
+  tags:
+    - aads
+
+- name: Extracting AADS `swversion` version
+  vars:
+    appsp_regex: "DeviceServices:([^ \n]+)"
+  set_fact:
+    appsp: "{{ swversion.stdout | regex_search(appsp_regex, '\\1') | first }}"
+  tags:
+    - aads
+
+- name: Obtaining AADS `sys versions` output
+  command: /opt/Avaya/bin/sys/alias-wrappers/sys-wrapper.sh versions
+  register: sysversions
+  tags:
+    - aads
+
+- name: Extracting AADS `System layer version`
+  vars:
+    syssp_regex: "System layer version : ([^ \n]+)"
+  set_fact:
+    syssp: "{{ sysversions.stdout | regex_search(syssp_regex, '\\1') | first }}"
+  tags:
+    - aads
+
+- name: Dumping AADS header to '{{ swversion_stdout }}'
+  lineinfile:
+    line: "AVAYA AURA DEVICE SERVICES,Latest,AADS,,{{ latest_aads_appsp }},{{ latest_aads_syssp }},,"
+    insertafter: EOF
+    dest: "{{ swversion_stdout }}"
+  delegate_to: localhost
+  tags:
+    - aads
+
+- name: Dumping AADS versions to '{{ swversion_stdout }}'
+  vars:
+    pgrp: "{{ group_names | first | default('') }}"
+    cgrp: "{{ group_names | last | default('') }}"
+    ssp: ""
+    ksp: ""
+  lineinfile:
+    line: "{{ inventory_hostname }},{{ ansible_host }},{{ pgrp }},{{ cgrp }},{{ appsp }},{{ syssp }},{{ ssp }},{{ ksp }}"
+    insertafter: EOF
+    dest: "{{ swversion_stdout }}"
+  delegate_to: localhost
+  ignore_errors: true
+  tags:
+    - aads
+...

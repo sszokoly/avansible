@@ -1,0 +1,177 @@
+---
+-
+  hosts: localhost
+  connection: local
+  gather_facts: False
+
+  # vars
+  vars:
+    swversion_stdout: swversions.csv
+
+  # tasks
+  tasks:
+    - include_tasks: tasks/swversion_create_csv.yml
+
+-
+  #### Enabling SSH to AVP ####
+  hosts: adamutil
+  gather_facts: False
+
+  # tasks
+  tasks:
+    - name: Enabling SSH to AVP
+      command: /opt/util/bin/AVP_SSH enable
+
+- 
+  #### AADS ####
+  hosts: aads
+  gather_facts: False
+
+  # vars: variables that will apply to the play
+  vars:
+    swversion_stdout: swversions.csv
+    latest_aads_appsp: "8.1.5.0.280"
+    latest_aads_syssp: "3.5.0.0.17"
+
+  tasks:
+    - include_tasks: tasks/swversion_avaya_aads.yml
+
+- 
+  #### AAMS ####
+  hosts: aams
+  gather_facts: False
+
+  # vars: variables that will apply to the play
+  vars:
+    swversion_stdout: swversions.csv
+    latest_aams_appsp: "8.0.2.245"
+    latest_aams_syssp: "8.0.0.35"
+
+  tasks:
+    - include_tasks: tasks/swversion_avaya_aams.yml
+
+- 
+  #### ADS ####
+  hosts: slamon
+  gather_facts: False
+
+  # vars: variables that will apply to the play
+  vars:
+    swversion_stdout: swversions.csv
+    latest_ads_appsp: "4.1.0.0-908"
+
+  tasks:
+    - include_tasks: tasks/swversion_avaya_ads.yml
+
+-
+  #### AES ####
+  hosts: AES
+  gather_facts: False
+
+  # vars: variables that will apply to the play
+  vars:
+    swversion_stdout: swversions.csv
+    latest_aes_appsp: "8.1.3.6.0.8-0"
+    latest_aes_ssp: "LSU-8.1.2Plus-24"
+
+  tasks:
+    - include_tasks: tasks/swversion_avaya_aes.yml
+
+-
+  #### ASBCE ####
+  hosts: sbceems
+  gather_facts: False
+
+  # vars: variables that will apply to the play
+  vars:
+    swversion_stdout: swversions.csv
+    latest_asbce_appsp: "8.1.3.2-22279"
+
+  tasks:
+    - include_tasks: tasks/swversion_avaya_asbce.yml
+
+-
+  #### AVP ####
+  hosts: adamavp
+  gather_facts: False
+
+  # vars: variables that will apply to the play
+  vars:
+    swversion_stdout: swversions.csv
+    latest_avp_appsp: "8.1.3.3.0.02"
+    latest_avp_ssp: "PLAT-e65-015"
+
+  tasks:
+    - include_tasks: tasks/swversion_avaya_avp.yml
+
+-
+  #### AVPU ####
+  hosts: adamutil
+  gather_facts: False
+
+  # vars: variables that will apply to the play
+  vars:
+    swversion_stdout: swversions.csv
+    latest_avpu_appsp: "8.1.3.5.0.02"
+    latest_avpu_ssp: "8.1-015-02"
+
+  tasks:
+    - include_tasks: tasks/swversion_avaya_avpu.yml
+
+-
+  #### BREEZE ####
+  hosts: sd36breqattmgmt
+  gather_facts: False
+
+  # vars: variables that will apply to the play
+  vars:
+    swversion_stdout: swversions.csv
+    latest_breeze_appsp: "3.8.1.1.381105"
+
+  tasks:
+    - include_tasks: tasks/swversion_avaya_breeze.yml
+
+-
+  #### CM ####
+  hosts: sd36cm1
+  gather_facts: False
+
+  # vars: variables that will apply to the play
+  vars:
+    swversion_stdout: swversions.csv
+    latest_cm_appsp: "8.1.3.6.0.890.27674"
+    latest_cm_ssp: "PLAT-rhel7.6-0270"
+    latest_cm_ksp: "KERNEL-3.10.0-1160.80.1.el7"
+
+  tasks:
+    - include_tasks: tasks/swversion_avaya_cm.yml
+
+-
+  #### SMGR ####
+  hosts: sd36smgr1
+  gather_facts: False
+
+  # vars: variables that will apply to the play
+  vars:
+    swversion_stdout: swversions.csv
+    latest_smgr_appsp: "8.1.3.6.1015252"
+    latest_smgr_ssp: "8.1.7.812700001"
+
+  tasks:
+    - include_tasks: tasks/swversion_avaya_smgr.yml
+
+- 
+  #### SM ####
+  hosts: sd36sm1
+  gather_facts: False
+
+  # vars: variables that will apply to the play
+  vars:
+    swversion_stdout: swversions.csv
+    latest_sm_appsp: "8.1.3.6.813618"
+    latest_sm_ssp: "8.1-SSP-27001"
+
+  # tasks
+  tasks:
+    - include_tasks: tasks/swversion_avaya_sm.yml
+...

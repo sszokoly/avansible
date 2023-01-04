@@ -1,0 +1,41 @@
+---
+- name: Obtaining ADS `swversion -l` output
+  command: swversion -l
+  register: swversion
+  become: yes
+  tags:
+    - ads
+
+- name: Extracting ADS `SLAMon Server Version`
+  vars:
+    appsp_regex: "SLAMon Server Version: ([^ \n]+)"
+  set_fact:
+    appsp: "{{ swversion.stdout | regex_search(appsp_regex, '\\1') | first }}"
+  tags:
+    - ads
+
+- name: Dumping ADS header to '{{ swversion_stdout }}'
+  lineinfile:
+    line: "AVAYA DIAGNOSTIC SERVER,Latest,ADS,,{{ latest_ads_appsp }},,,"
+    insertafter: EOF
+    dest: "{{ swversion_stdout }}"
+  delegate_to: localhost
+  tags:
+    - ads
+
+- name: Dumping ADS version to '{{ swversion_stdout }}'
+  vars:
+    pgrp: "{{ group_names | first | default('') }}"
+    cgrp: "{{ group_names | last | default('') }}"
+    syssp: ""
+    ssp: ""
+    ksp: ""
+  lineinfile:
+    line: "{{ inventory_hostname }},{{ ansible_host }},{{ pgrp }},{{ cgrp }},{{ appsp }},{{ syssp }},{{ ssp }},{{ ksp }}"
+    insertafter: EOF
+    dest: "{{ swversion_stdout }}"
+  delegate_to: localhost
+  ignore_errors: true
+  tags:
+    - ads
+...

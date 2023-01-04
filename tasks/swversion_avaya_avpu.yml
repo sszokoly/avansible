@@ -1,0 +1,47 @@
+---
+- name: Obtaining AVPU `swversion` output
+  shell: /opt/util/bin/swversion
+  register: swversion
+  tags:
+    - avpu
+
+- name: Extracting AVPU `RTS Version`
+  vars:
+    appsp_regex: "RTS Version: AVPU-([^ \n]+)"
+  set_fact:
+    appsp: "{{ swversion.stdout | regex_search(appsp_regex, '\\1') | first }}"
+  tags:
+    - avpu
+
+- name: Extracting AVPU SSP
+  vars:
+    ssp_regex: "SSP-([^ \n]+)"
+  set_fact:
+    ssp: "{{ swversion.stdout | regex_search(ssp_regex, '\\1') | first }}"
+  tags:
+    - avpu
+
+- name: Dumping AVPU header to '{{ swversion_stdout }}'
+  lineinfile:
+    line: "AVP UTILITIES,Latest,AVPU,,{{ latest_avpu_appsp }},,{{ latest_avpu_ssp }},"
+    insertafter: EOF
+    dest: "{{ swversion_stdout }}"
+  delegate_to: localhost
+  tags:
+    - avpu
+
+- name: Dumping AVPU versions to '{{ swversion_stdout }}'
+  vars:
+    pgrp: "{{ group_names | first | default('') }}"
+    cgrp: "{{ group_names | last | default('') }}"
+    syssp: ""
+    ksp: ""
+  lineinfile:
+    line: "{{ inventory_hostname }},{{ ansible_host }},{{ pgrp }},{{ cgrp }},{{ appsp }},{{ syssp }},{{ ssp }},{{ ksp }}"
+    insertafter: EOF
+    dest: "{{ swversion_stdout }}"
+  delegate_to: localhost
+  ignore_errors: true
+  tags:
+    - avpu
+...

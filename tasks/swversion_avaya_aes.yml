@@ -1,0 +1,47 @@
+---
+- name: Obtaining AES `swversion` output
+  command: swversion
+  register: swversion
+  tags:
+    - aes
+
+- name: Extracting AES `Version`
+  vars:
+    appsp_regex: "Version: ([^ \n]+)"
+  set_fact:
+    appsp: "{{ swversion.stdout | regex_search(appsp_regex, '\\1') | first }}"
+  tags:
+    - aes
+
+- name: Extracting AES SSP
+  vars:
+    ssp_regex: "(LSU-[^ \n]+)"
+  set_fact:
+    ssp: "{{ swversion.stdout | regex_findall(ssp_regex, '\\1') | last }}"
+  tags:
+    - aes
+
+- name: Dumping AES header to '{{ swversion_stdout }}'
+  lineinfile:
+    line: "APPLICATION ENABLEMENT SERVICES,Latest,AES,,{{ latest_aes_appsp }},,{{ latest_aes_ssp }},"
+    insertafter: EOF
+    dest: "{{ swversion_stdout }}"
+  delegate_to: localhost
+  tags:
+    - aes
+
+- name: Dumping AADS versions to '{{ swversion_stdout }}'
+  vars:
+    pgrp: "{{ group_names | first | default('') }}"
+    cgrp: "{{ group_names | last | default('') }}"
+    syssp: ""
+    ksp: ""
+  lineinfile:
+    line: "{{ inventory_hostname }},{{ ansible_host }},{{ pgrp }},{{ cgrp }},{{ appsp }},{{ syssp }},{{ ssp }},{{ ksp }}"
+    insertafter: EOF
+    dest: "{{ swversion_stdout }}"
+  delegate_to: localhost
+  ignore_errors: true
+  tags:
+    - aes
+...
