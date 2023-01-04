@@ -14,7 +14,7 @@
 
 -
   #### Enabling SSH to AVP ####
-  hosts: adamutil
+  hosts: AVPU
   gather_facts: False
 
   # tasks
@@ -24,7 +24,7 @@
 
 - 
   #### AADS ####
-  hosts: aads
+  hosts: AADS
   gather_facts: False
 
   # vars: variables that will apply to the play
@@ -38,7 +38,7 @@
 
 - 
   #### AAMS ####
-  hosts: aams
+  hosts: AAMS
   gather_facts: False
 
   # vars: variables that will apply to the play
@@ -79,7 +79,7 @@
 
 -
   #### ASBCE ####
-  hosts: sbceems
+  hosts: ASBCE
   gather_facts: False
 
   # vars: variables that will apply to the play
@@ -92,7 +92,7 @@
 
 -
   #### AVP ####
-  hosts: adamavp
+  hosts: AVP
   gather_facts: False
 
   # vars: variables that will apply to the play
@@ -106,7 +106,7 @@
 
 -
   #### AVPU ####
-  hosts: adamutil
+  hosts: AVPU
   gather_facts: False
 
   # vars: variables that will apply to the play
@@ -120,7 +120,7 @@
 
 -
   #### BREEZE ####
-  hosts: sd36breqattmgmt
+  hosts: BREEZE
   gather_facts: False
 
   # vars: variables that will apply to the play
@@ -133,7 +133,7 @@
 
 -
   #### CM ####
-  hosts: sd36cm1
+  hosts: CM
   gather_facts: False
 
   # vars: variables that will apply to the play
@@ -148,7 +148,7 @@
 
 -
   #### SMGR ####
-  hosts: sd36smgr1
+  hosts: SMGR
   gather_facts: False
 
   # vars: variables that will apply to the play
@@ -162,7 +162,7 @@
 
 - 
   #### SM ####
-  hosts: sd36sm1
+  hosts: SM
   gather_facts: False
 
   # vars: variables that will apply to the play
