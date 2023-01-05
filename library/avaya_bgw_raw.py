@@ -159,7 +159,7 @@ def run_module():
         else:
             print(str(err))
     
-    output = handler.send_command_expect(cmd, expect_string=expect_string)
+    output = handler.send_command(cmd, expect_string=expect_string)
     if delimiter in output:
         output += handler.send_command('\n', expect_string=expect_string)
     output = output.replace(delimiter, '')
