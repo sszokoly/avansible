@@ -131,3 +131,5 @@ dmypy.json
 *.csv
 *.csv.prev
 hosts.*
+.gitignore
+.vscode
