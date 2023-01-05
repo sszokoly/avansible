@@ -1,5 +1,5 @@
 
-#!/bin/env python3.8
+#!/bin/env python
 
 # Copyright 2023 Sabi Szokoly <sszokoly@gmail.com>
 #
