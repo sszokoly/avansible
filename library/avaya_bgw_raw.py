@@ -24,7 +24,7 @@ short_description: Retrieves command output from Avaya Branch Gateway
 version_added: "0.0.1"
 
 description:
-    - Retrieves command output from Avaya Branch Gateway via raw SSH connection.
+    - Retrieves command output from Avaya Branch Gateway via raw SSH connection
 
 requirements:
     - netmiko
@@ -60,7 +60,7 @@ author:
 '''
 
 EXAMPLES = r'''
-# Retrieve the output of a command from Branch Gateway through controller.
+# Retrieve the output of a command from Branch Gateway through controller
 - name: Obtain `show image version` from G450
     avaya_bgw_raw:
         host: "{{ ansible_host }}"
@@ -74,12 +74,12 @@ EXAMPLES = r'''
 RETURNS = r'''
 # Returns output as string and list of lines.
 stdout:
-    description: output of lines already stripped of page delimiter.
+    description: output of lines already stripped of page delimiter
     type: str
     returned: always
-    sample: 'Bank         Version\n-----------  -------\nA (current)  41.35.0\nB            41.34.4'
+    sample: "Bank         Version\n-----------  -------\nA (current)  41.35.0\nB            41.34.4"
 stdout_lines:
-    description: list of lines of output, already stripped of page delimiter.
+    description: list of lines of output, already stripped of page delimiter
     type: list
     returned: always
     sample: [
@@ -149,7 +149,7 @@ def run_module():
     
     delimiter = '\n--type q to quit or space key to continue-- '
     prompt = '\(super\)# '
-    expect_string = "|".join((delimiter, prompt))
+    expect_string = '|'.join((delimiter, prompt))
     
     try:
         handler = ConnectHandler(**bgw)
