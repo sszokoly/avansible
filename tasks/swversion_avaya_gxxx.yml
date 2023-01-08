@@ -13,17 +13,17 @@
 
 - name: Extracting FW Vintage
   vars:
-    appsp_regex: "FW Vintage                  : ([^ \n]+)"
+    appsp_regex: ".*FW Vintage.*: ([^ \n]+)"
   set_fact:
     appsp: "{{ system.stdout | regex_search(appsp_regex, '\\1') | first }}"
   tags:
     - gxxx
 
-- name: Extracting Model
+- name: Extracting HW Vintage
   vars:
-    syssp_regex: "Model                       : ([^ \n]+)"
+    syssp_regex: ".*HW Vintage.*: ([^ \n]+)"
   set_fact:
-    syssp: "{{ system.stdout | regex_search(syssp_regex, '\\1') | first }}"
+    syssp: "HW Vintage {{ system.stdout | regex_search(syssp_regex, '\\1') | first }}"
   tags:
     - gxxx
 
