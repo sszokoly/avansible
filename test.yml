@@ -1,0 +1,38 @@
+---
+-
+  hosts: adamg430
+  gather_facts: False
+
+  tasks:
+    - name: Obtaining Gxxx `show system` output
+      avaya_bgw_raw:
+        host: "{{ ansible_host }}"
+        username: "{{ ansible_user }}"
+        password: "{{ ansible_ssh_pass }}"
+        cmd: "show system"
+      register: system
+      delegate_to: localhost
+      no_log: true
+      tags:
+        - gxxx
+
+    - name: Extracting FW Vintage
+      vars:
+        appsp_regex: "FW Vintage                  : ([^ \n]+)"
+      set_fact:
+        appsp: "{{ system.stdout | regex_search(appsp_regex, '\\1') | first }}"
+      tags:
+        - gxxx
+
+    - name: Extracting Model
+      vars:
+        syssp_regex: "Model                       : ([^ \n]+)"
+      set_fact:
+        syssp: "{{ system.stdout | regex_search(syssp_regex, '\\1') | first }}"
+      tags:
+        - gxxx
+
+    - name: display
+      debug:
+        msg: "{{ appsp }} {{ syssp}}"
+...

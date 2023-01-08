@@ -147,6 +147,19 @@
     - include_tasks: tasks/swversion_avaya_cm.yml
 
 -
+  #### GXXX ####
+  hosts: Gxxx
+  gather_facts: False
+
+  # vars: variables that will apply to the play
+  vars:
+    swversion_stdout: swversions.csv
+    latest_gxxx_appsp: "41.36.0"
+
+  tasks:
+    - include_tasks: tasks/swversion_avaya_gxxx.yml
+
+-
   #### SMGR ####
   hosts: SMGR
   gather_facts: False
