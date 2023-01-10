@@ -30,7 +30,7 @@
   # vars: variables that will apply to the play
   vars:
     swversion_stdout: swversions.csv
-    latest_aads_appsp: "8.1.5.0.280"
+    latest_aads_appsp: "8.1.5.1.5"
     latest_aads_syssp: "3.5.0.0.17"
 
   tasks:

@@ -29,7 +29,7 @@
 
 - name: Dumping Gxxx headers to '{{ swversion_stdout }}'
   lineinfile:
-    line: "AVAYA BRANCH GATEWAY,Latest,Gxxx,,{{ latest_gxxx_appsp }},,, }}"
+    line: "AVAYA BRANCH GATEWAY,Latest,Gxxx,,{{ latest_gxxx_appsp }},,,"
     insertafter: EOF
     dest: "{{ swversion_stdout }}"
   delegate_to: localhost
