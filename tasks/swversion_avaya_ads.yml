@@ -1,32 +1,53 @@
 ---
 - name: Obtaining ADS `swversion -l` output
   command: swversion -l
-  register: swversion
+  register: slamonver
+  become: yes
+  tags:
+    - ads
+
+- name: Obtaining ADS `swversion -s` output
+  command: swversion -l
+  register: salgwver
   become: yes
   tags:
     - ads
 
 - name: Extracting ADS `SLAMon Server Version`
   vars:
-    appsp_regex: "SLAMon Server Version: ([^ \n]+)"
+    slamon_appsp_regex: "SLAMon Server Version: ([^ \n]+)"
+    slamon_appsp: "{{ slamonver.stdout | regex_search(slamon_appsp_regex, '\\1') }}"
   set_fact:
-    appsp: "{{ swversion.stdout | regex_search(appsp_regex, '\\1') | first }}"
+    slamon_appsp: "{{ slamon_appsp | first }}"
+  when: slamon_appsp | length >= 1
   tags:
     - ads
 
-- name: Dumping ADS header to '{{ swversion_stdout }}'
+- name: Extracting ADS `SAL Gateway Version`
+  vars:
+    salgw_appsp_regex: "SAL Gateway Version: ([^ \n]+)"
+    salgw_appsp: "{{ salgwver.stdout | regex_search(salgw_appsp_regex, '\\1') }}"
+  set_fact:
+    salgw_appsp: "{{ salgw_appsp | first }}"
+  when: salgw_appsp | length >= 1
+  tags:
+    - ads
+
+- name: Dumping SLAMon header to '{{ swversion_stdout }}'
   lineinfile:
-    line: "AVAYA DIAGNOSTIC SERVER,Latest,ADS,,{{ latest_ads_appsp }},,,"
+    line: "AVAYA DIAGNOSTIC SERVER,Latest,ADS,slamon,{{ latest_slamon_appsp }},,,"
     insertafter: EOF
     dest: "{{ swversion_stdout }}"
   delegate_to: localhost
+  when: slamon_appsp is defined
   tags:
     - ads
 
-- name: Dumping ADS version to '{{ swversion_stdout }}'
+- name: Dumping SLAMon version to '{{ swversion_stdout }}'
   vars:
     pgrp: "{{ group_names | first | default('') }}"
     cgrp: "{{ group_names | last | default('') }}"
+    appsp: "{{ slamon_appsp }}"
     syssp: ""
     ssp: ""
     ksp: ""
@@ -35,6 +56,35 @@
     insertafter: EOF
     dest: "{{ swversion_stdout }}"
   delegate_to: localhost
+  when: slamon_appsp is defined
+  ignore_errors: true
+  tags:
+    - ads
+
+- name: Dumping SALGW header to '{{ swversion_stdout }}'
+  lineinfile:
+    line: "AVAYA DIAGNOSTIC SERVER,Latest,ADS,salgw,{{ latest_salgw_appsp }},,,"
+    insertafter: EOF
+    dest: "{{ swversion_stdout }}"
+  delegate_to: localhost
+  when: salgw_appsp is defined
+  tags:
+    - ads
+
+- name: Dumping SLAGW version to '{{ swversion_stdout }}'
+  vars:
+    pgrp: "{{ group_names | first | default('') }}"
+    cgrp: "{{ group_names | last | default('') }}"
+    appsp: "{{ salgw_appsp }}"
+    syssp: ""
+    ssp: ""
+    ksp: ""
+  lineinfile:
+    line: "{{ inventory_hostname }},{{ ansible_host }},{{ pgrp }},{{ cgrp }},{{ appsp }},{{ syssp }},{{ ssp }},{{ ksp }}"
+    insertafter: EOF
+    dest: "{{ swversion_stdout }}"
+  delegate_to: localhost
+  when: salgw_appsp is defined
   ignore_errors: true
   tags:
     - ads

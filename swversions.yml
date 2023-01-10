@@ -52,13 +52,14 @@
 
 - 
   #### ADS ####
-  hosts: slamon
+  hosts: ADS
   gather_facts: False
 
   # vars: variables that will apply to the play
   vars:
     swversion_stdout: swversions.csv
-    latest_ads_appsp: "4.1.0.0-908"
+    latest_slamon_appsp: "4.1.0.0-908"
+    latest_salgw_appsp: "4.1.0.0-24"
 
   tasks:
     - include_tasks: tasks/swversion_avaya_ads.yml

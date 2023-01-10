@@ -145,7 +145,7 @@ def run_module():
             'username': 'root',
             'password': 'R00t01',
         }
-        cmd = sys.argv[1] if len(sys.argv) > 1 else 'show system'
+        cmd = sys.argv[1] if len(sys.argv) > 1 else 'show image version'
     
     delimiter = '\n--type q to quit or space key to continue-- '
     prompt = '\(super\)# '
@@ -165,7 +165,10 @@ def run_module():
     output = output.replace(delimiter, '')
     
     if not debug_mode:
-        module.exit_json(**{'stdout': output, 'stdout_lines': output.split('\n')})
+        module.exit_json(**{
+            'stdout': output,
+            'stdout_lines': output.split('\n'),
+        })
     else:
         print(output)
 
