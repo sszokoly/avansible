@@ -1,15 +1,63 @@
 ---
 - 
-  #### ADS ####
-  hosts: ADS
+  #### BREEZE ####
+  hosts: sd36brpmmmgmt
   gather_facts: False
 
   # vars: variables that will apply to the play
   vars:
-    swversion_stdout: swversions.csv
-    latest_slamon_appsp: "4.1.0.0-908"
-    latest_salgw_appsp: "4.1.0.0-24"
+    delegate_to_host: sd36smgr1
 
   tasks:
-    - include_tasks: tasks/swversion_avaya_ads.yml
+    - name: Obtaining {{ inventory_hostname }} `swversion` through {{ delegate_to_host }}
+      vars:
+        cmd: "sudo /opt/Avaya/bin/swversion"
+        opts: "-o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null"
+        prompt: "{{ ansible_user }}@{{ inventory_hostname }}*"
+      shell: |
+        set timeout 1000
+        set prompt "{{ prompt }}"
+        spawn ssh {{ opts }} {{ ansible_user }}@{{ ansible_host }}
+        expect "Password: "
+        send "{{ ansible_ssh_pass }}\n"
+        sleep 2
+        set timeout -1
+        expect $prompt
+        send "{{ cmd }}\n"
+        expect $prompt
+        exit 0
+      args:
+        executable: /usr/bin/expect
+      register: cmd_stdout
+      when: delegate_to_host is defined
+      ignore_errors: true
+      delegate_to: "{{ delegate_to_host }}"
+      tags:
+        - breeze
+
+    - name: Obtaining {{ inventory_hostname }} `swversion`
+      vars:
+        cmd: "sudo /opt/Avaya/bin/swversion"
+      shell: "{{ cmd }}"
+      register: cmd_stdout
+      when: delegate_to_host is not defined
+      ignore_errors: true
+      tags:
+        - breeze
+  
+    - name: Extracting Breeze `Release`
+      vars:
+        appsp_regex: "Release:?\\s*([0-9.-]*)"
+        appsp_res: "{{ cmd_stdout | regex_search(appsp_regex, '\\1') }}"
+      set_fact:
+        appsp: "{{ appsp_res | first }}"
+      when: appsp_res | length >= 1
+      delegate_to: localhost
+      tags:
+        - breeze
+   
+    - name: show swversion
+      debug:
+        msg: "{{ appsp | default('') }}"
+      delegate_to: localhost
 ...
