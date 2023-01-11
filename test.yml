@@ -6,12 +6,13 @@
 
   # vars: variables that will apply to the play
   vars:
-    delegate_to_host: sd36smgr1
+    cmd: "sudo /opt/Avaya/bin/swversion"
+    timeout: 20
+    default: "failed to obtain"
 
   tasks:
-    - name: Obtaining {{ inventory_hostname }} `swversion` through {{ delegate_to_host }}
+    - name: "Obtaining `swversion` through delegate_to_host"
       vars:
-        cmd: "sudo /opt/Avaya/bin/swversion"
         opts: "-o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null"
         prompt: "{{ ansible_user }}@{{ inventory_hostname }}*"
       shell: |
@@ -28,36 +29,39 @@
         exit 0
       args:
         executable: /usr/bin/expect
-      register: cmd_stdout
+      timeout: "{{ timeout }}"
+      register: result1
       when: delegate_to_host is defined
       ignore_errors: true
       delegate_to: "{{ delegate_to_host }}"
       tags:
         - breeze
 
-    - name: Obtaining {{ inventory_hostname }} `swversion`
+    - name: "Obtaining `swversion`"
       vars:
-        cmd: "sudo /opt/Avaya/bin/swversion"
       shell: "{{ cmd }}"
-      register: cmd_stdout
+      timeout: "{{ timeout }}"
+      register: result2
       when: delegate_to_host is not defined
       ignore_errors: true
       tags:
         - breeze
-  
-    - name: Extracting Breeze `Release`
+
+    - name: "Extracting Breeze `Release`"
       vars:
         appsp_regex: "Release:?\\s*([0-9.-]*)"
-        appsp_res: "{{ cmd_stdout | regex_search(appsp_regex, '\\1') }}"
+        result: "{{ result1 if (delegate_to_host is defined) else result2 }}"
+        appsp_res: "{{ result.stdout | regex_search(appsp_regex, '\\1') }}"
       set_fact:
         appsp: "{{ appsp_res | first }}"
       when: appsp_res | length >= 1
+      ignore_errors: true
       delegate_to: localhost
       tags:
         - breeze
    
     - name: show swversion
       debug:
-        msg: "{{ appsp | default('') }}"
+        msg: "{{ appsp | default(default) }}"
       delegate_to: localhost
 ...
