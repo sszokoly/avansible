@@ -21,7 +21,7 @@
 
   # vars: variables that will apply to the play
   vars:
-    timeout: 10
+    timeout: 15
     default: ""
     swversion_stdout: swversions.csv
     latest_cm_appsp: "8.1.3.6.0.890.27674"

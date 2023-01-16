@@ -1,0 +1,23 @@
+---
+- 
+  hosts: all
+  gather_facts: False
+
+  vars:
+    ncs_ip: 192.168.18.33
+    ncs_ssh_pass: 6H6NSR+pKg5U
+    ncs_user: combat
+
+  tasks:
+    - name: "Obtaining `swversion` through delegate_to_host"
+      expect:
+        #command: ssh -o "UserKnownHostsFile=/dev/null" -o "StrictHostKeyChecking=no" {{ ncs_user }}@{{ ncs_ip }}
+        command: "uname -a"
+        timeout: 10
+        responses:
+          #"combat@192.168.18.33's password: ": "6H6NSR+pKg5U"
+          "[combat@coquitlam]$ ": "date"
+          "[combat@coquitlam]$ ": "exit"
+        echo: yes  
+      delegate_to: localhost
+...
