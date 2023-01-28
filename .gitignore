@@ -133,3 +133,4 @@ dmypy.json
 hosts.*
 .gitignore
 .vscode
+ncs.yml

@@ -1,0 +1,49 @@
+---
+# Gather ESXi license serials
+-
+  # Hosts: where our play will run and options it will run with
+  hosts: AVP
+  gather_facts: False
+  ignore_unreachable: true
+  ignore_errors: true
+
+  # Vars: variables that will apply to the play
+  vars:
+    esxi_serial_stdout: esxi_serials.csv
+    default: "missing"
+
+  # Tasks: the list of tasks that will be executed within the playbook
+  tasks:
+    - name: Creating new '{{ esxi_serial_stdout }}'
+      copy:
+        content: 'Name,IP,Type,SubType,ESXI License Serial No'
+        dest: "../{{ esxi_serial_stdout }}"
+      delegate_to: localhost
+
+    - name: "Setting ansible_ssh_common_args when ssh_proxy is defined"
+      set_fact:
+        ansible_ssh_common_args: "{{ ssh_args }}"
+      when: ssh_proxy is defined
+
+    - name: "Obtaining `vim-cmd vimsvc/license --show` output"
+      shell: vim-cmd vimsvc/license --show
+      register: license
+    
+    - name: "Extracting serial number"
+      vars:
+        serial_regex: "serial: ([^ \n]+)"
+        serial_res: "{{ license.stdout | regex_search(serial_regex, '\\1') }}"
+      set_fact:
+        serial: "{{ serial_res | first }}"
+      when: serial_res | length >= 1
+
+    - name: Dumping serial to '{{ esxi_serials.swversion_stdout }}'
+      vars:
+        pgrp: "{{ group_names | first | default('') }}"
+        cgrp: "{{ group_names | last | default('') }}"
+      lineinfile:
+        line: "{{ inventory_hostname }},{{ ansible_host }},{{ pgrp }},{{ cgrp }},{{ serial | default(default) }}"
+        insertafter: EOF
+        dest: "../{{ esxi_serial_stdout }}"
+      delegate_to: localhost
+...

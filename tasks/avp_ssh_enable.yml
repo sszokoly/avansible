@@ -1,0 +1,14 @@
+---
+# Enable SSH to AVPs on AVPUs
+-
+  # Hosts: where our play will run and options it will run with
+  hosts: AVPU 
+  gather_facts: False
+  ignore_unreachable: true
+  ignore_errors: true
+
+  # Tasks: the list of tasks that will be executed within the playbook
+  tasks:
+    - name: AVP_SSH_enable
+      ansible.builtin.command: /opt/util/bin/AVP_SSH enable
+...
