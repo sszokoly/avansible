@@ -21,7 +21,7 @@
     appsp_res: "{{ result.stdout | regex_search(appsp_regex, '\\1') }}"
   set_fact:
     appsp: "{{ appsp_res | first }}"
-  when: appsp_res | length >= 1
+  when: (appsp_res | length >= 1) and (result is defined)
   delegate_to: localhost
   tags:
     - cm
