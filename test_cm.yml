@@ -3,7 +3,7 @@
   set_fact:
     ansible_ssh_common_args: "{{ ssh_args }}"
     #vars:
-    #ssh_args: #ssh_args: '-o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no -o ProxyCommand="sshpass -p {{ hostvars.ssh_proxy.ansible_ssh_pass }} ssh -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no -W %h:%p -q {{ hostvars.ssh_proxy.ansible_user }}@{{ hostvars.ssh_proxy.ansible_host }}"'
+      #ssh_args: #ssh_args: '-o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no -o ProxyCommand="sshpass -p {{ hostvars.ssh_proxy.ansible_ssh_pass }} ssh -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no -W %h:%p -q {{ hostvars.ssh_proxy.ansible_user }}@{{ hostvars.ssh_proxy.ansible_host }}"'
   when: ssh_proxy is defined
 
 - name: "Obtaining `swversion` through ssh_proxy"
