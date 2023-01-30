@@ -13,3 +13,39 @@
   tags:
     - BREEZE
 
+- name: Extracting Breeze 'Release'
+  vars:
+    appsp_regex: "Release: ([^ \n]+)"
+    appsp_res: "{{ result.stdout | regex_search(appsp_regex, '\\1') }}"
+  set_fact:
+    appsp: "{{ appsp_res | first }}"
+  when: (appsp_res | length >= 1) and (result is defined)
+  delegate_to: localhost
+  tags:
+    - BREEZE
+
+- name: Writing Breeze latest versions to '{{ swversion_stdout }}'
+  lineinfile:
+    line: "BREEZE,Latest,BREEZE,,{{ latest_breeze_appsp }},,,"
+    insertafter: EOF
+    dest: "{{ swversion_stdout }}"
+  delegate_to: localhost
+  tags:
+    - BREEZE
+
+- name: Writing Breeze extracted versions to '{{ swversion_stdout }}'
+  vars:
+    pgrp: "{{ group_names | first | default('') }}"
+    cgrp: "{{ group_names | last | default('') }}"
+    syssp: ""
+    ssp: ""
+    ksp: ""
+  lineinfile:
+    line: "{{ inventory_hostname }},{{ ansible_host }},{{ pgrp }},{{ cgrp }},{{ appsp }},{{ syssp }},{{ ssp }},{{ ksp }}"
+    insertafter: EOF
+    dest: "{{ swversion_stdout }}"
+  delegate_to: localhost
+  ignore_errors: true
+  tags:
+    - breeze
+...

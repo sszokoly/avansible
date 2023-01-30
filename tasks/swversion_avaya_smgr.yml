@@ -1,36 +1,50 @@
 ---
-- name: Obtaining SMGR `swversion` output
-  command: /opt/Avaya/vsp/swversion.sh
-  register: swversion
-  tags:
-    - smgr
-
-- name: Extracting SMGR RTS version
-  vars:
-    rts_regex: "RTS Version: SMGR ([^ \n]+)"
+- name: Setting ansible_ssh_common_args when ssh_proxy is defined
   set_fact:
-    appsp: "{{ swversion.stdout | regex_search(rts_regex, '\\1') | first }}"
+    ansible_ssh_common_args: "{{ ssh_args }}"
+  when: ssh_proxy is defined
+
+- name: Obtaining SMGR `swversion` output
+  vars:
+    cmd: "sh /opt/Avaya/vsp/swversion.sh"
+  shell: "{{ cmd }}"
+  timeout: "{{ timeout }}"
+  register: result
   tags:
-    - smgr
+    - SMGR
+
+- name: Extracting SMGR RTS Version
+  vars:
+    appsp_regex: "RTS Version: SMGR ([^ \n]+)"
+    appsp_res: "{{ result.stdout | regex_search(appsp_regex, '\\1') }}"
+  set_fact:
+    appsp: "{{ appsp_res | first }}"
+  when: (appsp_res | length >= 1) and (result is defined)
+  delegate_to: localhost
+  tags:
+    - SMGR
 
 - name: Extracting SMGR SSP version
   vars:
     ssp_regex: "SMGR SSP ([^\n]+)\nPatch ([^ ]+)"
+    ssp_res: "{{ result.stdout | regex_search(ssp_regex, '\\1') }}"
   set_fact:
-    ssp: "{{ swversion.stdout | regex_search(ssp_regex, '\\2') | first }}"
+    ssp: "{{ ssp1_res | first }}"
+  when: ssp_res | length >= 1
+  delegate_to: localhost
   tags:
-    - smgr
+    - SMGR
 
-- name: Dumping SMGR header to '{{ swversion_stdout }}'
+- name: Writting SMGR latest versions to '{{ swversion_stdout }}'
   lineinfile:
     line: "SYSTEM MANAGER,Latest,SMGR,,{{ latest_smgr_appsp }},,{{ latest_smgr_ssp }},"
     insertafter: EOF
     dest: "{{ swversion_stdout }}"
   delegate_to: localhost
   tags:
-    - smgr
+    - SMGR
 
-- name: Dumping SMGR versions to '{{ swversion_stdout }}'
+- name: Writting SMGR extracted versions to '{{ swversion_stdout }}'
   vars:
     pgrp: "{{ group_names | first | default('') }}"
     cgrp: "{{ group_names | last | default('') }}"
@@ -43,5 +57,8 @@
   delegate_to: localhost
   ignore_errors: true
   tags:
-    - smgr
+    - SMGR
+
+- name: Resetting SSH connection
+  ansible.builtin.meta: reset_connection
 ...

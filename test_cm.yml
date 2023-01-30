@@ -76,7 +76,7 @@
   tags:
     - CM 
 
-- name: Writing CM latest versions to '{{ swversion_stdout }}'
+- name: Writting CM latest versions to '{{ swversion_stdout }}'
   lineinfile:
     line: "AVAYA COMMUNICATION MANAGER,Latest,CM,,{{ latest_cm_appsp }},,{{ latest_cm_ssp }},{{ latest_cm_ksp }}"
     insertafter: EOF
@@ -85,7 +85,7 @@
   tags:
     - CM
 
-- name: Writing CM extracted versions to '{{ swversion_stdout }}'
+- name: Writting CM extracted versions to '{{ swversion_stdout }}'
   vars:
     pgrp: "{{ group_names | first | default('') }}"
     cgrp: "{{ group_names | last | default('') }}"

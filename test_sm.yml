@@ -9,6 +9,7 @@
     cmd: "sudo /opt/Avaya/bin/swversion"
   shell: "{{ cmd }}"
   timeout: "{{ timeout }}"
+  register: result
   tags:
     - SM
 

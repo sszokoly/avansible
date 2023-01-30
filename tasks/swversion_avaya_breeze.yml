@@ -1,28 +1,39 @@
 ---
-- name: Obtaining Breeze `swversion` output
-  command: sudo /opt/Avaya/bin/swversion
-  register: swversion
-  tags:
-    - breeze
+- name: Setting ansible_ssh_common_args when ssh_proxy is defined
+  set_fact:
+    ansible_ssh_common_args: "{{ ssh_args }}"
+  when: ssh_proxy is defined
 
-- name: Extracting Breeze `Release`
+- name: Obtaining Breeze `swversion` output
+  vars:
+    cmd: "sudo /opt/Avaya/bin/swversion"
+  shell: "{{ cmd }}"
+  timeout: "{{ timeout }}"
+  register: result
+  tags:
+    - BREEZE
+
+- name: Extracting Breeze 'Release'
   vars:
     appsp_regex: "Release: ([^ \n]+)"
+    appsp_res: "{{ result.stdout | regex_search(appsp_regex, '\\1') }}"
   set_fact:
-    appsp: "{{ swversion.stdout | regex_search(appsp_regex, '\\1') | first }}"
+    appsp: "{{ appsp_res | first }}"
+  when: (appsp_res | length >= 1) and (result is defined)
+  delegate_to: localhost
   tags:
-    - breeze
+    - BREEZE
 
-- name: Dumping Breeze header to '{{ swversion_stdout }}'
+- name: Writing Breeze latest versions to '{{ swversion_stdout }}'
   lineinfile:
     line: "BREEZE,Latest,BREEZE,,{{ latest_breeze_appsp }},,,"
     insertafter: EOF
     dest: "{{ swversion_stdout }}"
   delegate_to: localhost
   tags:
-    - breeze
+    - BREEZE
 
-- name: Dumping Breeze version to '{{ swversion_stdout }}'
+- name: Writing Breeze extracted versions to '{{ swversion_stdout }}'
   vars:
     pgrp: "{{ group_names | first | default('') }}"
     cgrp: "{{ group_names | last | default('') }}"
@@ -36,5 +47,5 @@
   delegate_to: localhost
   ignore_errors: true
   tags:
-    - breeze
+    - BREEZE
 ...
