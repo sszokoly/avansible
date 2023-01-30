@@ -13,7 +13,7 @@
   timeout: "{{ timeout }}"
   register: result
   tags:
-    - cm
+    - CM 
 
 - name: "Extracting CM RTS version"
   vars:
@@ -24,7 +24,7 @@
   when: (appsp_res | length >= 1) and (result is defined)
   delegate_to: localhost
   tags:
-    - cm
+    - CM 
 
 - name: "Setting pre10 variable based on CM major release"
   vars:
@@ -36,7 +36,7 @@
   when: pre10_res | length >= 1
   delegate_to: localhost
   tags:
-    - cm
+    - CM 
 
 - name: "Extracting pre 10 CM KSP version"
   vars:
@@ -47,7 +47,7 @@
   when: (pre10) and (ksp_res | length >= 1)
   delegate_to: localhost
   tags:
-    - cm
+    - CM 
 
 - name: "Extracting pre 10 CM SSP version"
   vars:
@@ -58,7 +58,7 @@
   when: (pre10) and (ssp1_res | length >= 1)
   delegate_to: localhost
   tags:
-    - cm
+    - CM 
 
 - name: "Extracting CM SSP version"
   vars:
@@ -69,14 +69,14 @@
   when: (not pre10) and (ssp2_res | length >= 1)
   delegate_to: localhost
   tags:
-    - cm
+    - CM 
 
 - name: "Setting CM SSP version"
   set_fact:
     ssp: "{{ ssp1 if (ssp1 is defined) else ssp2 }}"
   delegate_to: localhost
   tags:
-    - cm
+    - CM 
 
 - name: Writing CM latest versions to '{{ swversion_stdout }}'
   lineinfile:
@@ -85,7 +85,7 @@
     dest: "{{ swversion_stdout }}"
   delegate_to: localhost
   tags:
-    - cm
+    - CM
 
 - name: Writing CM extracted versions to '{{ swversion_stdout }}'
   vars:
@@ -98,14 +98,14 @@
   delegate_to: localhost
   ignore_errors: true
   tags:
-    - cm
+    - CM
 
 - name: debug showing swversion
   debug:
     msg: "{{ appsp | default(default) }},{{ ssp | default(default) }},{{ ksp | default(default) }},{{ pre10 }}"
   delegate_to: localhost
   tags:
-    - cm
+    - CM
 
 - name: Resetting SSH connection
   ansible.builtin.meta: reset_connection
