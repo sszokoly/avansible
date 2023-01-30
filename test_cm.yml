@@ -96,7 +96,6 @@
     insertafter: EOF
     dest: "{{ swversion_stdout }}"
   delegate_to: localhost
-  ignore_errors: true
   tags:
     - CM
 
