@@ -26,7 +26,7 @@
   tags:
     - cm
 
-- name: "Setting pre10 flag"
+- name: "Setting pre10 variable based on CM major release"
   vars:
     pre10: True
     pre10_regex: "0?([0-9]+)\\..*"
@@ -34,6 +34,17 @@
   set_fact:
     pre10: "{% if (pre10_res | first | int ) < 10 %}True{% else %}False{% endif %}"
   when: pre10_res | length >= 1
+  delegate_to: localhost
+  tags:
+    - cm
+
+- name: "Extracting pre 10 CM KSP version"
+  vars:
+    ksp_regex: "(KERNEL-[^ \n]+).*activated.*"
+    ksp_res: "{{ result.stdout | regex_search(ksp_regex, '\\1') }}"
+  set_fact:
+    ksp: "{{ ksp_res | first }}"
+  when: (pre10) and (ksp_res | length >= 1)
   delegate_to: localhost
   tags:
     - cm
@@ -67,18 +78,7 @@
   tags:
     - cm
 
-- name: "Extracting CM KSP version"
-  vars:
-    ksp_regex: "(KERNEL-[^ \n]+).*activated.*"
-    ksp_res: "{{ result.stdout | regex_search(ksp_regex, '\\1') }}"
-  set_fact:
-    ksp: "{{ ksp_res | first }}"
-  when: ksp_res | length >= 1
-  delegate_to: localhost
-  tags:
-    - cm
-
-- name: Dumping CM header to '{{ swversion_stdout }}'
+- name: Writing CM latest versions to '{{ swversion_stdout }}'
   lineinfile:
     line: "AVAYA COMMUNICATION MANAGER,Latest,CM,,{{ latest_cm_appsp }},,{{ latest_cm_ssp }},{{ latest_cm_ksp }}"
     insertafter: EOF
@@ -87,7 +87,7 @@
   tags:
     - cm
 
-- name: Dumping CM versions to '{{ swversion_stdout }}'
+- name: Writing CM extracted versions to '{{ swversion_stdout }}'
   vars:
     pgrp: "{{ group_names | first | default('') }}"
     cgrp: "{{ group_names | last | default('') }}"
@@ -100,13 +100,13 @@
   tags:
     - cm
 
-- name: show swversion
+- name: debug showing swversion
   debug:
     msg: "{{ appsp | default(default) }},{{ ssp | default(default) }},{{ ksp | default(default) }},{{ pre10 }}"
   delegate_to: localhost
   tags:
     - cm
 
-- name: Reset ssh connection
+- name: Resetting SSH connection
   ansible.builtin.meta: reset_connection
 ...

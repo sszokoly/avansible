@@ -1,0 +1,24 @@
+---
+-
+  hosts: cm 
+  gather_facts: False
+  ignore_unreachable: true
+  ignore_errors: true
+
+  vars:
+
+  tasks:
+    - name: "Setting ansible_ssh_common_args when ssh_proxy is defined"
+      set_fact:
+        ansible_ssh_common_args: "{{ ssh_args }}"
+      when: ssh_proxy is defined
+
+    - name: cmd
+      shell: /opt/ecs/bin/swversion 
+      register: rv
+
+    - name: debug
+      debug:
+        msg: "{{ rv.stdout }}"
+      delegate_to: localhost
+...
