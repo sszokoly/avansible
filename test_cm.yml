@@ -1,12 +1,10 @@
 ---
-- name: "Setting ansible_ssh_common_args when ssh_proxy is defined"
+- name: Setting ansible_ssh_common_args when ssh_proxy is defined
   set_fact:
     ansible_ssh_common_args: "{{ ssh_args }}"
-    #vars:
-      #ssh_args: #ssh_args: '-o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no -o ProxyCommand="sshpass -p {{ hostvars.ssh_proxy.ansible_ssh_pass }} ssh -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no -W %h:%p -q {{ hostvars.ssh_proxy.ansible_user }}@{{ hostvars.ssh_proxy.ansible_host }}"'
   when: ssh_proxy is defined
 
-- name: "Obtaining `swversion` through ssh_proxy"
+- name: Obtaining CM `swversion` output
   vars:
     cmd: "/opt/ecs/bin/swversion"
   shell: "{{ cmd }}"
@@ -15,7 +13,7 @@
   tags:
     - CM 
 
-- name: "Extracting CM RTS version"
+- name: Extracting CM RTS version
   vars:
     appsp_regex: "RTS Version:?\\s*CM ([0-9.-]*)"
     appsp_res: "{{ result.stdout | regex_search(appsp_regex, '\\1') }}"
@@ -26,7 +24,7 @@
   tags:
     - CM 
 
-- name: "Setting pre10 variable based on CM major release"
+- name: Setting pre10 variable based on CM major release
   vars:
     pre10: True
     pre10_regex: "0?([0-9]+)\\..*"
@@ -38,7 +36,7 @@
   tags:
     - CM 
 
-- name: "Extracting pre 10 CM KSP version"
+- name: Extracting pre 10 CM KSP version
   vars:
     ksp_regex: "(KERNEL-[^ \n]+).*activated.*"
     ksp_res: "{{ result.stdout | regex_search(ksp_regex, '\\1') }}"
@@ -49,7 +47,7 @@
   tags:
     - CM 
 
-- name: "Extracting pre 10 CM SSP version"
+- name: Extracting pre 10 CM SSP version
   vars:
     ssp1_regex: "(PLAT-[^ \n]+).*activated.*"
     ssp1_res: "{{ result.stdout | regex_search(ssp1_regex, '\\1') }}"
@@ -60,7 +58,7 @@
   tags:
     - CM 
 
-- name: "Extracting CM SSP version"
+- name: Extracting CM SSP version
   vars:
     ssp2_regex: "AV-CM.*(SSP[0-9]+)"
     ssp2_res: "{{ result.stdout | regex_search(ssp2_regex, '\\1') }}"
@@ -71,7 +69,7 @@
   tags:
     - CM 
 
-- name: "Setting CM SSP version"
+- name: Setting CM SSP version
   set_fact:
     ssp: "{{ ssp1 if (ssp1 is defined) else ssp2 }}"
   delegate_to: localhost

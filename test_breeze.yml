@@ -1,67 +1,15 @@
 ---
-- 
-  #### BREEZE ####
-  hosts: sd36brpmmmgmt
-  gather_facts: False
+- name: Setting ansible_ssh_common_args when ssh_proxy is defined
+  set_fact:
+    ansible_ssh_common_args: "{{ ssh_args }}"
+  when: ssh_proxy is defined
 
-  # vars: variables that will apply to the play
+- name: Obtaining Breeze `swversion` output
   vars:
     cmd: "sudo /opt/Avaya/bin/swversion"
-    timeout: 20
-    default: "failed to obtain"
+  shell: "{{ cmd }}"
+  timeout: "{{ timeout }}"
+  register: result
+  tags:
+    - BREEZE
 
-  tasks:
-    - name: "Obtaining `swversion` through delegate_to_host"
-      vars:
-        opts: "-o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null"
-        prompt: "{{ ansible_user }}@{{ inventory_hostname }}*"
-      shell: |
-        set timeout 1000
-        set prompt "{{ prompt }}"
-        spawn ssh {{ opts }} {{ ansible_user }}@{{ ansible_host }}
-        expect "Password: "
-        send "{{ ansible_ssh_pass }}\n"
-        sleep 2
-        set timeout -1
-        expect $prompt
-        send "{{ cmd }}\n"
-        expect $prompt
-        exit 0
-      args:
-        executable: /usr/bin/expect
-      timeout: "{{ timeout }}"
-      register: result1
-      when: delegate_to_host is defined
-      ignore_errors: true
-      delegate_to: "{{ delegate_to_host }}"
-      tags:
-        - breeze
-
-    - name: "Obtaining `swversion`"
-      vars:
-      shell: "{{ cmd }}"
-      timeout: "{{ timeout }}"
-      register: result2
-      when: delegate_to_host is not defined
-      ignore_errors: true
-      tags:
-        - breeze
-
-    - name: "Extracting Breeze `Release`"
-      vars:
-        appsp_regex: "Release:?\\s*([0-9.-]*)"
-        result: "{{ result1 if (delegate_to_host is defined) else result2 }}"
-        appsp_res: "{{ result.stdout | regex_search(appsp_regex, '\\1') }}"
-      set_fact:
-        appsp: "{{ appsp_res | first }}"
-      when: appsp_res | length >= 1
-      ignore_errors: true
-      delegate_to: localhost
-      tags:
-        - breeze
-   
-    - name: show swversion
-      debug:
-        msg: "{{ appsp | default(default) }}"
-      delegate_to: localhost
-...

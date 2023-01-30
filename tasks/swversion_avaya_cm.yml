@@ -1,30 +1,30 @@
 ---
-- name: "Setting ansible_ssh_common_args when ssh_proxy is defined"
+- name: Setting ansible_ssh_common_args when ssh_proxy is defined
   set_fact:
     ansible_ssh_common_args: "{{ ssh_args }}"
   when: ssh_proxy is defined
 
-- name: "Obtaining `swversion` through ssh_proxy"
+- name: Obtaining CM `swversion` output
   vars:
     cmd: "/opt/ecs/bin/swversion"
   shell: "{{ cmd }}"
   timeout: "{{ timeout }}"
   register: result
   tags:
-    - cm
+    - CM 
 
-- name: "Extracting CM RTS version"
+- name: Extracting CM RTS version
   vars:
     appsp_regex: "RTS Version:?\\s*CM ([0-9.-]*)"
     appsp_res: "{{ result.stdout | regex_search(appsp_regex, '\\1') }}"
   set_fact:
     appsp: "{{ appsp_res | first }}"
-  when: appsp_res | length >= 1
+  when: (appsp_res | length >= 1) and (result is defined)
   delegate_to: localhost
   tags:
-    - cm
+    - CM 
 
-- name: "Setting pre10 flag"
+- name: Setting pre10 variable based on CM major release
   vars:
     pre10: True
     pre10_regex: "0?([0-9]+)\\..*"
@@ -34,9 +34,20 @@
   when: pre10_res | length >= 1
   delegate_to: localhost
   tags:
-    - cm
+    - CM 
 
-- name: "Extracting pre 10 CM SSP version"
+- name: Extracting pre 10 CM KSP version
+  vars:
+    ksp_regex: "(KERNEL-[^ \n]+).*activated.*"
+    ksp_res: "{{ result.stdout | regex_search(ksp_regex, '\\1') }}"
+  set_fact:
+    ksp: "{{ ksp_res | first }}"
+  when: (pre10) and (ksp_res | length >= 1)
+  delegate_to: localhost
+  tags:
+    - CM 
+
+- name: Extracting pre 10 CM SSP version
   vars:
     ssp1_regex: "(PLAT-[^ \n]+).*activated.*"
     ssp1_res: "{{ result.stdout | regex_search(ssp1_regex, '\\1') }}"
@@ -45,9 +56,9 @@
   when: (pre10) and (ssp1_res | length >= 1)
   delegate_to: localhost
   tags:
-    - cm
+    - CM 
 
-- name: "Extracting CM SSP version"
+- name: Extracting CM SSP version
   vars:
     ssp2_regex: "AV-CM.*(SSP[0-9]+)"
     ssp2_res: "{{ result.stdout | regex_search(ssp2_regex, '\\1') }}"
@@ -56,36 +67,25 @@
   when: (not pre10) and (ssp2_res | length >= 1)
   delegate_to: localhost
   tags:
-    - cm
+    - CM 
 
-- name: "Setting CM SSP version"
+- name: Setting CM SSP version
   set_fact:
     ssp: "{{ ssp1 if (ssp1 is defined) else ssp2 }}"
   delegate_to: localhost
   tags:
-    - cm
+    - CM 
 
-- name: "Extracting CM KSP version"
-  vars:
-    ksp_regex: "(KERNEL-[^ \n]+).*activated.*"
-    ksp_res: "{{ result.stdout | regex_search(ksp_regex, '\\1') }}"
-  set_fact:
-    ksp: "{{ ksp_res | first }}"
-  when: ksp_res | length >= 1
-  delegate_to: localhost
-  tags:
-    - cm
-
-- name: Dumping CM header to '{{ swversion_stdout }}'
+- name: Writing CM latest versions to '{{ swversion_stdout }}'
   lineinfile:
     line: "AVAYA COMMUNICATION MANAGER,Latest,CM,,{{ latest_cm_appsp }},,{{ latest_cm_ssp }},{{ latest_cm_ksp }}"
     insertafter: EOF
     dest: "{{ swversion_stdout }}"
   delegate_to: localhost
   tags:
-    - cm
+    - CM
 
-- name: Dumping CM versions to '{{ swversion_stdout }}'
+- name: Writing CM extracted versions to '{{ swversion_stdout }}'
   vars:
     pgrp: "{{ group_names | first | default('') }}"
     cgrp: "{{ group_names | last | default('') }}"
@@ -94,17 +94,9 @@
     insertafter: EOF
     dest: "{{ swversion_stdout }}"
   delegate_to: localhost
-  ignore_errors: true
   tags:
-    - cm
+    - CM
 
-- name: show swversion
-  debug:
-    msg: "{{ appsp | default(default) }},{{ ssp | default(default) }},{{ ksp | default(default) }},{{ pre10 }}"
-  delegate_to: localhost
-  tags:
-    - cm
-
-- name: Reset ssh connection
+- name: Resetting SSH connection
   ansible.builtin.meta: reset_connection
 ...
