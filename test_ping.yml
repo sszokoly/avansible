@@ -1,6 +1,6 @@
 ---
 -
-  hosts: cm 
+  hosts: sd36smgr1
   gather_facts: False
   ignore_unreachable: true
   ignore_errors: true
@@ -14,7 +14,7 @@
       when: ssh_proxy is defined
 
     - name: cmd
-      shell: /opt/ecs/bin/swversion 
+      shell: uname -a
       register: rv
 
     - name: debug

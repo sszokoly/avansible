@@ -14,7 +14,7 @@
 
 -
   #### ALL ####
-  hosts: all
+  hosts: ADS
   gather_facts: False
   ignore_unreachable: true
   ignore_errors: true
@@ -28,12 +28,15 @@
     latest_cm_ssp: "PLAT-rhel7.6-0270"
     latest_cm_ksp: "KERNEL-3.10.0-1160.80.1.el7"
     latest_sm_appsp: "8.1.3.6"
-    latest_sm_ssp: "SSP009"
+    latest_sm_ssp: "SSP9"
     latest_breeze_appsp: "3.8.1.1.381105"
     latest_smgr_appsp: "10.1.0.2"
-    latest_smgr_ssp: "SSP009"
+    latest_smgr_ssp: "009"
+    latest_aes_appsp: "8.1.3.6.0.8-0"
+    latest_aes_ssp: "LSU-8.1.2"
+    latest_slamon_appsp: "4.1.1"
 
   tasks:
-    - include_tasks: test_smgr.yml
-      when: "'SMGR' in group_names"
+    - include_tasks: test_ads.yml
+      #when: "'SMGR' in group_names"
 ...

@@ -24,7 +24,7 @@
   tags:
     - BREEZE
 
-- name: Writing Breeze latest versions to '{{ swversion_stdout }}'
+- name: Writting Breeze latest versions to '{{ swversion_stdout }}'
   lineinfile:
     line: "BREEZE,Latest,BREEZE,,{{ latest_breeze_appsp }},,,"
     insertafter: EOF
@@ -33,7 +33,7 @@
   tags:
     - BREEZE
 
-- name: Writing Breeze extracted versions to '{{ swversion_stdout }}'
+- name: Writting Breeze extracted versions to '{{ swversion_stdout }}'
   vars:
     pgrp: "{{ group_names | first | default('') }}"
     cgrp: "{{ group_names | last | default('') }}"
@@ -45,7 +45,6 @@
     insertafter: EOF
     dest: "{{ swversion_stdout }}"
   delegate_to: localhost
-  ignore_errors: true
   tags:
     - breeze
 ...

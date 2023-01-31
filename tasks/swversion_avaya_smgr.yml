@@ -24,13 +24,41 @@
   tags:
     - SMGR
 
+- name: Setting pre10 variable based on SMGR major release
+  vars:
+    pre10_regex: "([876]+)"
+    pre10_res: "{{ appsp | regex_search(pre10_regex, '\\1') }}"
+  set_fact:
+    pre10: "{% if ((pre10_res | length >= 1) and (pre10_res | first | int < 10)) %}True{% else %}False{% endif %}"
+  delegate_to: localhost
+  tags:
+    - SMGR 
+
+- name: Extracting pre 10 SMGR SSP version
+  vars:
+    ssp1_regex: "SMGR SSP [^\n]+\nPatch 8.1.7.81([0-9][0-9])"
+    ssp1_res: "{{ result.stdout | regex_search(ssp1_regex, '\\1') }}"
+  set_fact:
+    ssp1: "{{ ssp1_res | first }}"
+  when: (pre10) and (ssp1_res | length >= 1)
+  delegate_to: localhost
+  tags:
+    - SMGR
+
 - name: Extracting SMGR SSP version
   vars:
-    ssp_regex: "SMGR SSP ([^\n]+)\nPatch ([^ ]+)"
-    ssp_res: "{{ result.stdout | regex_search(ssp_regex, '\\1') }}"
+    ssp2_regex: "AV_SSP_VERSION : ([0-9]*)"
+    ssp2_res: "{{ result.stdout | regex_search(ssp2_regex, '\\1') }}"
   set_fact:
-    ssp: "{{ ssp1_res | first }}"
-  when: ssp_res | length >= 1
+    ssp2: "{{ ssp2_res | first }}"
+  when: (not pre10) and (ssp2_res | length >= 1)
+  delegate_to: localhost
+  tags:
+    - SMGR
+
+- name: Setting SMGR SSP version
+  set_fact:
+    ssp: "{{ ssp1 if (ssp1 is defined) else ssp2 }}"
   delegate_to: localhost
   tags:
     - SMGR
@@ -55,7 +83,6 @@
     insertafter: EOF
     dest: "{{ swversion_stdout }}"
   delegate_to: localhost
-  ignore_errors: true
   tags:
     - SMGR
 
