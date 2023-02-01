@@ -4,7 +4,6 @@
     ansible_ssh_common_args: "{{ ssh_args }}"
   when: ssh_proxy is defined
 
-
 - name: Obtaining AAMS `sysTool -st` output
   vars:
     cmd: "sudo /opt/avaya/bin/sysTool.sh -st"
@@ -27,7 +26,7 @@
 
 - name: Obtaining AAMS platform version if root access is available
   vars:
-    cmd: "mysql -NB -uplatdbuser -pplatdbpass -D emplatcore -e \"SELECT version FROM sw_inventory WHERE swname='platform'\""
+    cmd: "/opt/avaya/app/amsinst/ma/MAS/MySql/bin/mysql -NB -uplatdbuser -pplatdbpass -D emplatcore -e \"SELECT version FROM sw_inventory WHERE swname='platform'\""
   shell: "{{ cmd }}"
   become: yes
   when: ansible_become_pass is defined
@@ -38,7 +37,7 @@
 
 - name: Extracting AAMS platform version
   set_fact:
-    aapsp: "{{ plat_result }}"
+    appsp: "{{ plat_result.stdout }}"
   when: (ansible_become_pass is defined) and (plat_result is defined)
   delegate_to: localhost
   tags:
@@ -64,7 +63,6 @@
     insertafter: EOF
     dest: "{{ swversion_stdout }}"
   delegate_to: localhost
-  ignore_errors: true
   tags:
     - AAMS
 

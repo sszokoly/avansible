@@ -1,40 +1,71 @@
 ---
-- name: Obtaining AAMS `sysTool -st` output
-  command: sudo /opt/avaya/bin/sysTool.sh -st
-  register: sysversion
-  tags:
-    - aams
+- name: Setting ansible_ssh_common_args when ssh_proxy is defined
+  set_fact:
+    ansible_ssh_common_args: "{{ ssh_args }}"
+  when: ssh_proxy is defined
 
-- name: Extracting AADS `System layer version`
+- name: Obtaining AAMS `sysTool -st` output
+  vars:
+    cmd: "sudo /opt/avaya/bin/sysTool.sh -st"
+  shell: "{{ cmd }}"
+  timeout: "{{ timeout }}"
+  register: result
+  tags:
+    - AAMS
+
+- name: Extracting AAMS System layer version
   vars:
     syssp_regex: "System Version           : ([^ \n]+)"
+    syssp_res: "{{ result.stdout | regex_search(syssp_regex, '\\1') }}"
   set_fact:
-    syssp: "{{ sysversion.stdout | regex_search(syssp_regex, '\\1') | first }}"
+    syssp: "{{ syssp_res | first }}"
+  when: (syssp_res | length >= 1) and (result is defined)
+  delegate_to: localhost
   tags:
-    - aams
+    - AAMS
 
-- name: Dumping AADS header to '{{ swversion_stdout }}'
+- name: Obtaining AAMS platform version if root access is available
+  vars:
+    cmd: "/opt/avaya/app/amsinst/ma/MAS/MySql/bin/mysql -NB -uplatdbuser -pplatdbpass -D emplatcore -e \"SELECT version FROM sw_inventory WHERE swname='platform'\""
+  shell: "{{ cmd }}"
+  become: yes
+  when: ansible_become_pass is defined
+  timeout: "{{ timeout }}"
+  register: plat_result
+  tags:
+    - AAMS
+
+- name: Extracting AAMS platform version
+  set_fact:
+    appsp: "{{ plat_result.stdout }}"
+  when: (ansible_become_pass is defined) and (plat_result is defined)
+  delegate_to: localhost
+  tags:
+    - AAMS
+
+- name: Writting AADS latest versions to '{{ swversion_stdout }}'
   lineinfile:
-    line: "AVAYA AURA MEDIA SERVER,Latest,AADS,,{{ latest_aams_appsp }},{{ latest_aams_syssp }},,"
+    line: "AVAYA AURA MEDIA SERVER,Latest,AADS,,{{ latest_aams_appsp | default('') }},{{ latest_aams_syssp | default('') }},,"
     insertafter: EOF
     dest: "{{ swversion_stdout }}"
   delegate_to: localhost
   tags:
-    - aams
+    - AAMS
 
-- name: Dumping AADS versions to '{{ swversion_stdout }}'
+- name: Writting AAMS extracted versions to '{{ swversion_stdout }}'
   vars:
     pgrp: "{{ group_names | first | default('') }}"
     cgrp: "{{ group_names | last | default('') }}"
-    appsp: ""
     ssp: ""
     ksp: ""
   lineinfile:
-    line: "{{ inventory_hostname }},{{ ansible_host }},{{ pgrp }},{{ cgrp }},{{ appsp }},{{ syssp }},{{ ssp }},{{ ksp }}"
+    line: "{{ inventory_hostname }},{{ ansible_host }},{{ pgrp }},{{ cgrp }},{{ appsp | default(default) }},{{ syssp }},{{ ssp }},{{ ksp }}"
     insertafter: EOF
     dest: "{{ swversion_stdout }}"
   delegate_to: localhost
-  ignore_errors: true
   tags:
-    - aams
+    - AAMS
+
+- name: Resetting SSH connection
+  ansible.builtin.meta: reset_connection
 ...
