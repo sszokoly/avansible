@@ -1,0 +1,7 @@
+host 192.168.18.33
+  User combat
+  HostName 192.168.18.33
+  IdentityFile ~/.ssh/id_ed25519
+
+host * !jumphost
+  ProxyCommand ssh -F ~/ssh_proxy/ssh_config -W %h:%p jumphost
