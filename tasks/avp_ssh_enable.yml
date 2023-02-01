@@ -1,14 +1,15 @@
 ---
-# Enable SSH to AVPs on AVPUs
--
-  # Hosts: where our play will run and options it will run with
-  hosts: AVPU 
-  gather_facts: False
-  ignore_unreachable: true
-  ignore_errors: true
+- name: Setting ansible_ssh_common_args when ssh_proxy is defined
+  set_fact:
+    ansible_ssh_common_args: "{{ ssh_args }}"
+  when: ssh_proxy is defined
 
-  # Tasks: the list of tasks that will be executed within the playbook
-  tasks:
-    - name: AVP_SSH_enable
-      ansible.builtin.command: /opt/util/bin/AVP_SSH enable
+- name: AVP_SSH_enable
+  vars:
+    cmd: "/opt/util/bin/swversion"
+  shell: "{{ cmd }}"
+  timeout: "{{ timeout }}"
+  register: result
+  tags:
+    - AVPU
 ...
