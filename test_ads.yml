@@ -4,16 +4,6 @@
     ansible_ssh_common_args: "{{ ssh_args }}"
   when: ssh_proxy is defined
 
-- name: Obtaining ADS `swversion -l` output
-  vars:
-    cmd: "swversion -l"
-  shell: "{{ cmd }}"
-  become: yes
-  timeout: "{{ timeout }}"
-  register: slamon_result
-  tags:
-    - ADS
-
 - name: Obtaining ADS `swversion` output
   vars:
     cmd: "swversion"
@@ -45,8 +35,9 @@
     - ADS
 
 - name: Writting SLAMon latest version to '{{ swversion_stdout }}'
+  vars:
   lineinfile:
-    line: "AVAYA DIAGNOSTIC SERVER,Latest,ADS,slamon,{{ latest_slamon_appsp }},,,"
+    line: "AVAYA DIAGNOSTIC SERVER,Latest,ADS,slamon,{{ latest_slamon_appsp | default('') }},,,"
     insertafter: EOF
     dest: "{{ swversion_stdout }}"
   delegate_to: localhost
@@ -73,7 +64,7 @@
 
 - name: Writting SAL Gateway latest version to '{{ swversion_stdout }}'
   lineinfile:
-    line: "AVAYA DIAGNOSTIC SERVER,Latest,ADS,salgw,{{ latest_salgw_appsp }},,,"
+    line: "AVAYA DIAGNOSTIC SERVER,Latest,ADS,salgw,{{ latest_salgw_appsp | default('') }},,,"
     insertafter: EOF
     dest: "{{ swversion_stdout }}"
   delegate_to: localhost

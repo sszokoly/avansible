@@ -1,49 +1,51 @@
 ---
-- name: Obtaining ADS `swversion -l` output
-  command: swversion -l
-  register: slamonver
-  become: yes
-  tags:
-    - ads
+- name: Setting ansible_ssh_common_args when ssh_proxy is defined
+  set_fact:
+    ansible_ssh_common_args: "{{ ssh_args }}"
+  when: ssh_proxy is defined
 
-- name: Obtaining ADS `swversion -s` output
-  command: swversion -l
-  register: salgwver
+- name: Obtaining ADS `swversion` output
+  vars:
+    cmd: "swversion"
+  shell: "{{ cmd }}"
   become: yes
+  timeout: "{{ timeout }}"
+  register: result
   tags:
-    - ads
+    - ADS
 
-- name: Extracting ADS `SLAMon Server Version`
+- name: Extracting SLAMon Server Version
   vars:
     slamon_appsp_regex: "SLAMon Server Version: ([^ \n]+)"
-    slamon_appsp: "{{ slamonver.stdout | regex_search(slamon_appsp_regex, '\\1') }}"
+    slamon_appsp: "{{ result.stdout | regex_search(slamon_appsp_regex, '\\1') }}"
   set_fact:
     slamon_appsp: "{{ slamon_appsp | first }}"
   when: slamon_appsp | length >= 1
   tags:
-    - ads
+    - ADS
 
-- name: Extracting ADS `SAL Gateway Version`
+- name: Extracting SAL Gateway Version
   vars:
     salgw_appsp_regex: "SAL Gateway Version: ([^ \n]+)"
-    salgw_appsp: "{{ salgwver.stdout | regex_search(salgw_appsp_regex, '\\1') }}"
+    salgw_appsp: "{{ result.stdout | regex_search(salgw_appsp_regex, '\\1') }}"
   set_fact:
     salgw_appsp: "{{ salgw_appsp | first }}"
   when: salgw_appsp | length >= 1
   tags:
-    - ads
+    - ADS
 
-- name: Dumping SLAMon header to '{{ swversion_stdout }}'
+- name: Writting SLAMon latest version to '{{ swversion_stdout }}'
+  vars:
   lineinfile:
-    line: "AVAYA DIAGNOSTIC SERVER,Latest,ADS,slamon,{{ latest_slamon_appsp }},,,"
+    line: "AVAYA DIAGNOSTIC SERVER,Latest,ADS,slamon,{{ latest_slamon_appsp | default('') }},,,"
     insertafter: EOF
     dest: "{{ swversion_stdout }}"
   delegate_to: localhost
   when: slamon_appsp is defined
   tags:
-    - ads
+    - ADS
 
-- name: Dumping SLAMon version to '{{ swversion_stdout }}'
+- name: Writting SLAMon extracted version '{{ swversion_stdout }}'
   vars:
     pgrp: "{{ group_names | first | default('') }}"
     cgrp: "{{ group_names | last | default('') }}"
@@ -57,21 +59,20 @@
     dest: "{{ swversion_stdout }}"
   delegate_to: localhost
   when: slamon_appsp is defined
-  ignore_errors: true
   tags:
-    - ads
+    - ADS
 
-- name: Dumping SALGW header to '{{ swversion_stdout }}'
+- name: Writting SAL Gateway latest version to '{{ swversion_stdout }}'
   lineinfile:
-    line: "AVAYA DIAGNOSTIC SERVER,Latest,ADS,salgw,{{ latest_salgw_appsp }},,,"
+    line: "AVAYA DIAGNOSTIC SERVER,Latest,ADS,salgw,{{ latest_salgw_appsp | default('') }},,,"
     insertafter: EOF
     dest: "{{ swversion_stdout }}"
   delegate_to: localhost
   when: salgw_appsp is defined
   tags:
-    - ads
+    - ADS
 
-- name: Dumping SLAGW version to '{{ swversion_stdout }}'
+- name: Writting SAL Gateway extracted version to '{{ swversion_stdout }}'
   vars:
     pgrp: "{{ group_names | first | default('') }}"
     cgrp: "{{ group_names | last | default('') }}"
@@ -85,7 +86,9 @@
     dest: "{{ swversion_stdout }}"
   delegate_to: localhost
   when: salgw_appsp is defined
-  ignore_errors: true
   tags:
-    - ads
+    - ADS
+
+- name: Resetting SSH connection
+  ansible.builtin.meta: reset_connection
 ...

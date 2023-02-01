@@ -37,7 +37,7 @@
 
 - name: Writting AES latest versions to '{{ swversion_stdout }}'
   lineinfile:
-    line: "APPLICATION ENABLEMENT SERVICES,Latest,AES,,{{ latest_aes_appsp }},,{{ latest_aes_ssp }},"
+    line: "APPLICATION ENABLEMENT SERVICES,Latest,AES,,{{ latest_aes_appsp | default('') }},,{{ latest_aes_ssp | default('') }},"
     insertafter: EOF
     dest: "{{ swversion_stdout }}"
   delegate_to: localhost

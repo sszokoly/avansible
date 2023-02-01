@@ -4,47 +4,47 @@
     ansible_ssh_common_args: "{{ ssh_args }}"
   when: ssh_proxy is defined
 
-- name: Obtaining AES `swversion` output
+- name: Obtaining AVP `swversion` output
   vars:
-    cmd: "swversion"
+    cmd: "/opt/avaya/bin/swversion"
   shell: "{{ cmd }}"
   timeout: "{{ timeout }}"
   register: result
   tags:
-    - AES
+    - AVP
 
-- name: Extracting AES Version
+- name: Extracting AVP Release
   vars:
-    appsp_regex: "Version: ([^ \n]+)"
+    appsp_regex: "Release: ([^ \n]+)"
     appsp_res: "{{ result.stdout | regex_search(appsp_regex, '\\1') }}"
   set_fact:
     appsp: "{{ appsp_res | first }}"
   when: (appsp_res | length >= 1) and (result is defined)
   delegate_to: localhost
   tags:
-    - AES
+    - AVP
 
-- name: Extracting AES SSP version
+- name: Extracting AVP SSP version
   vars:
-    ssp_regex: "(LSU-[^ \n]+)"
+    ssp_regex: "Security Service Patch.*-0?([0-9]*)"
     ssp_res: "{{ result.stdout | regex_search(ssp_regex, '\\1') }}"
   set_fact:
     ssp: "{{ ssp_res | first }}"
   when: ssp_res | length >= 1
   delegate_to: localhost
   tags:
-    - AES
+    -  AVP
 
-- name: Writting AES latest versions to '{{ swversion_stdout }}'
+- name: Writting AVP latest versions to '{{ swversion_stdout }}'
   lineinfile:
-    line: "APPLICATION ENABLEMENT SERVICES,Latest,AES,,{{ latest_aes_appsp | default('') }},,{{ latest_aes_ssp | default('') }},"
+    line: "AVAYA VIRTUALIZATION PLATFORM,Latest,AVP,,{{ latest_avp_appsp | default('') }},,{{ latest_avp_ssp | default('') }},"
     insertafter: EOF
     dest: "{{ swversion_stdout }}"
   delegate_to: localhost
   tags:
-    - AES
+    - AVP
 
-- name: Writting AES extracted versions to '{{ swversion_stdout }}'
+- name: Writting AVP extracted versions to '{{ swversion_stdout }}'
   vars:
     pgrp: "{{ group_names | first | default('') }}"
     cgrp: "{{ group_names | last | default('') }}"
@@ -56,8 +56,9 @@
     dest: "{{ swversion_stdout }}"
   delegate_to: localhost
   tags:
-    - AES
+    - AVP
 
 - name: Resetting SSH connection
   ansible.builtin.meta: reset_connection
 ...
+

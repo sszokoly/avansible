@@ -26,7 +26,7 @@
 
 - name: Writting Breeze latest versions to '{{ swversion_stdout }}'
   lineinfile:
-    line: "BREEZE,Latest,BREEZE,,{{ latest_breeze_appsp }},,,"
+    line: "BREEZE,Latest,BREEZE,,{{ latest_breeze_appsp | default('') }},,,"
     insertafter: EOF
     dest: "{{ swversion_stdout }}"
   delegate_to: localhost
@@ -46,5 +46,5 @@
     dest: "{{ swversion_stdout }}"
   delegate_to: localhost
   tags:
-    - breeze
+    - BREEZE
 ...

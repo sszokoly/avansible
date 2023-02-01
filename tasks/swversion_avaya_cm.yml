@@ -78,7 +78,7 @@
 
 - name: Writting CM latest versions to '{{ swversion_stdout }}'
   lineinfile:
-    line: "AVAYA COMMUNICATION MANAGER,Latest,CM,,{{ latest_cm_appsp }},,{{ latest_cm_ssp }},{{ latest_cm_ksp }}"
+    line: "AVAYA COMMUNICATION MANAGER,Latest,CM,,{{ latest_cm_appsp | default('') }},,{{ latest_cm_ssp | default('') }},{{ latest_cm_ksp | default('') }}"
     insertafter: EOF
     dest: "{{ swversion_stdout }}"
   delegate_to: localhost

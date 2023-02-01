@@ -65,7 +65,7 @@
 
 - name: Writting SMGR latest versions to '{{ swversion_stdout }}'
   lineinfile:
-    line: "SYSTEM MANAGER,Latest,SMGR,,{{ latest_smgr_appsp }},,{{ latest_smgr_ssp }},"
+    line: "SYSTEM MANAGER,Latest,SMGR,,{{ latest_smgr_appsp | default('') }},,{{ latest_smgr_ssp | default('') }},"
     insertafter: EOF
     dest: "{{ swversion_stdout }}"
   delegate_to: localhost

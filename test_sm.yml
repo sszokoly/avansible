@@ -35,7 +35,7 @@
 
 - name: Writing SM latest versions to '{{ swversion_stdout }}'
   lineinfile:
-    line: "SESSION MANAGER,Latest,SM,,{{ latest_sm_appsp }},,{{ latest_sm_ssp }},"
+    line: "SESSION MANAGER,Latest,SM,,{{ latest_sm_appsp | default('') }},,{{ latest_sm_ssp | default('') }},"
     insertafter: EOF
     dest: "{{ swversion_stdout }}"
   delegate_to: localhost

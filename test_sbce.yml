@@ -4,51 +4,41 @@
     ansible_ssh_common_args: "{{ ssh_args }}"
   when: ssh_proxy is defined
 
-- name: Obtaining AES `swversion` output
+- name: Obtaining ASBCE `ipcs-version` output
   vars:
-    cmd: "swversion"
+    cmd: "sudo /usr/local/ipcs/icu/scripts/ipcs-version"
   shell: "{{ cmd }}"
   timeout: "{{ timeout }}"
   register: result
   tags:
-    - AES
+    - ASBCE
 
-- name: Extracting AES Version
+- name: Extracting ASBCE `Application`
   vars:
-    appsp_regex: "Version: ([^ \n]+)"
+    appsp_regex: "Application             : ([^ \n]+)"
     appsp_res: "{{ result.stdout | regex_search(appsp_regex, '\\1') }}"
   set_fact:
     appsp: "{{ appsp_res | first }}"
   when: (appsp_res | length >= 1) and (result is defined)
   delegate_to: localhost
   tags:
-    - AES
+    - ASBCE
 
-- name: Extracting AES SSP version
-  vars:
-    ssp_regex: "(LSU-[^ \n]+)"
-    ssp_res: "{{ result.stdout | regex_search(ssp_regex, '\\1') }}"
-  set_fact:
-    ssp: "{{ ssp_res | first }}"
-  when: ssp_res | length >= 1
-  delegate_to: localhost
-  tags:
-    - AES
-
-- name: Writting AES latest versions to '{{ swversion_stdout }}'
+- name: Writting ASBCE latest versions to '{{ swversion_stdout }}'
   lineinfile:
-    line: "APPLICATION ENABLEMENT SERVICES,Latest,AES,,{{ latest_aes_appsp | default('') }},,{{ latest_aes_ssp | default('') }},"
+    line: "AVAYA SESSION BORDER CONTROLLER FOR ENTERPRISE,Latest,SBCE,,{{ latest_asbce_appsp | default('') }},,,"
     insertafter: EOF
     dest: "{{ swversion_stdout }}"
   delegate_to: localhost
   tags:
-    - AES
+    - ASBCE
 
-- name: Writting AES extracted versions to '{{ swversion_stdout }}'
+- name: Writting ASBCE extracted versions to '{{ swversion_stdout }}'
   vars:
     pgrp: "{{ group_names | first | default('') }}"
     cgrp: "{{ group_names | last | default('') }}"
     syssp: ""
+    ssp: ""
     ksp: ""
   lineinfile:
     line: "{{ inventory_hostname }},{{ ansible_host }},{{ pgrp }},{{ cgrp }},{{ appsp }},{{ syssp }},{{ ssp }},{{ ksp }}"
@@ -56,8 +46,5 @@
     dest: "{{ swversion_stdout }}"
   delegate_to: localhost
   tags:
-    - AES
-
-- name: Resetting SSH connection
-  ansible.builtin.meta: reset_connection
+    - ASBCE
 ...
