@@ -14,7 +14,7 @@
 
 -
   #### ALL ####
-  hosts: adamutil
+  hosts: sd36aes1
   gather_facts: False
   ignore_unreachable: true
   ignore_errors: true
@@ -37,6 +37,6 @@
     # latest_slamon_appsp: "4.1.1"
 
   tasks:
-    - include_tasks: test_avpu.yml
+    - include_tasks: test_aes.yml
       #when: "'SMGR' in group_names"
 ...

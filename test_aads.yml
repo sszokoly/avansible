@@ -13,7 +13,7 @@
   tags:
     - AADS
 
-- name: Extracting AADS DeviceServices versiob
+- name: Extracting AADS DeviceServices version
   vars:
     appsp_regex: "DeviceServices:([^ \n]+)"
     appsp_res: "{{ result.stdout | regex_search(appsp_regex, '\\1') }}"

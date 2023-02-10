@@ -43,7 +43,7 @@
   tags:
     - AAMS
 
-- name: Writting AADS latest versions to '{{ swversion_stdout }}'
+- name: Writting AAMS latest versions to '{{ swversion_stdout }}'
   lineinfile:
     line: "AVAYA AURA MEDIA SERVER,Latest,AADS,,{{ latest_aams_appsp | default('') }},{{ latest_aams_syssp | default('') }},,"
     insertafter: EOF

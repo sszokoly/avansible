@@ -1,15 +1,27 @@
 ---
-- name: Setting ansible_ssh_common_args when ssh_proxy is defined
-  set_fact:
-    ansible_ssh_common_args: "{{ ssh_args }}"
-  when: ssh_proxy is defined
+-
+  #### Enabling SSH to AVP ####
+  hosts: AVPU
+  gather_facts: False
+  ignore_unreachable: true
+  ignore_errors: true
 
-- name: AVP_SSH_enable
+  # vars: variables that will apply to the play
   vars:
-    cmd: "/opt/util/bin/swversion"
-  shell: "{{ cmd }}"
-  timeout: "{{ timeout }}"
-  register: result
-  tags:
-    - AVPU
+    timeout: 80
+
+  tasks:
+    - name: Setting ansible_ssh_common_args when ssh_proxy is defined
+      set_fact:
+        ansible_ssh_common_args: "{{ ssh_args }}"
+      when: ssh_proxy is defined
+
+    - name: AVP_SSH_enable
+      vars:
+        cmd: "/opt/avaya/common_services/AVP_SSH enable"
+      shell: "{{ cmd }}"
+      timeout: "{{ timeout }}"
+      register: result
+      tags:
+        - AVPU
 ...

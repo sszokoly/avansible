@@ -27,9 +27,9 @@
 - name: Extracting AES SSP version
   vars:
     ssp_regex: "(LSU-[^ \n]+)"
-    ssp_res: "{{ result.stdout | regex_search(ssp_regex, '\\1') }}"
+    ssp_res: "{{ result.stdout | regex_findall(ssp_regex) }}"
   set_fact:
-    ssp: "{{ ssp_res | first }}"
+    ssp: "{{ ssp_res | last }}"
   when: ssp_res | length >= 1
   delegate_to: localhost
   tags:

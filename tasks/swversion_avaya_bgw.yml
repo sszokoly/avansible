@@ -40,7 +40,7 @@
 
 - name: Writting BGW latest versions to '{{ swversion_stdout }}'
   lineinfile:
-    line: "AVAYA BRANCH GATEWAY,Latest,Gxxx,,{{ latest_bgw_appsp | default('') }},,,"
+    line: "AVAYA BRANCH GATEWAY,Latest,BGW,,{{ latest_bgw_appsp | default('') }},,,"
     insertafter: EOF
     dest: "{{ swversion_stdout }}"
   delegate_to: localhost

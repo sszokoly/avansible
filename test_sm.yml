@@ -26,7 +26,7 @@
 
 - name: Extracting SM SSP version
   vars:
-    ssp_regex: "\n.*(SSP[^ ]+).*installed Security Service Pack.*"
+    ssp_regex: "\n.*SSP-([0-9][0-9]).*installed Security Service Pack.*"
     ssp_res: "{{ result.stdout | regex_search(ssp_regex, '\\1') }}"
   set_fact:
     ssp: "{{ ssp_res | first }}"

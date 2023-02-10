@@ -26,7 +26,7 @@
     timeout: 80
 
   tasks:
-    - include_tasks: tasks/avp_ssh_enable.yml
+    - include_tasks: tasks/swversion_avp_ssh_enable.yml
 
 - 
   #### AADS ####
@@ -110,6 +110,22 @@
 
 -
   #### AVP ####
+  hosts: BGW
+  gather_facts: False
+  ignore_unreachable: true
+  ignore_errors: true
+
+  # vars: variables that will apply to the play
+  vars:
+    timeout: 80
+    default: ""
+    swversion_stdout: swversions.csv
+
+  tasks:
+    - include_tasks: tasks/swversion_avaya_bgw.yml
+
+-
+  #### AVP ####
   hosts: AVP
   gather_facts: False
   ignore_unreachable: true
@@ -139,22 +155,6 @@
 
   tasks:
     - include_tasks: tasks/swversion_avaya_avpu.yml
-
--
-  #### BREEZE ####
-  hosts: BREEZE
-  gather_facts: False
-  ignore_unreachable: true
-  ignore_errors: true
-
-  # vars: variables that will apply to the play
-  vars:
-    timeout: 80
-    default: ""
-    swversion_stdout: swversions.csv
-
-  tasks:
-    - include_tasks: tasks/swversion_avaya_breeze.yml
 
 -
   #### CM ####
@@ -204,4 +204,20 @@
   # tasks
   tasks:
     - include_tasks: tasks/swversion_avaya_sm.yml
+
+-
+  #### BREEZE ####
+  hosts: BREEZE
+  gather_facts: False
+  ignore_unreachable: true
+  ignore_errors: true
+
+  # vars: variables that will apply to the play
+  vars:
+    timeout: 80
+    default: ""
+    swversion_stdout: swversions.csv
+
+  tasks:
+    - include_tasks: tasks/swversion_avaya_breeze.yml
 ...
