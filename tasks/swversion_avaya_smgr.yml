@@ -26,13 +26,13 @@
 
 - name: Setting pre10 variable based on SMGR major release
   vars:
-    pre10_regex: "([876]+)"
+    pre10_regex: "(^[876])"
     pre10_res: "{{ appsp | regex_search(pre10_regex, '\\1') }}"
   set_fact:
-    pre10: "{% if ((pre10_res | length >= 1) and (pre10_res | first | int < 10)) %}True{% else %}False{% endif %}"
+    pre10: "{% if (pre10_res | length >= 1) %}True{% else %}False{% endif %}"
   delegate_to: localhost
   tags:
-    - SMGR 
+    - SMGR
 
 - name: Extracting pre 10 SMGR SSP version
   vars:
@@ -47,7 +47,7 @@
 
 - name: Extracting SMGR SSP version
   vars:
-    ssp2_regex: "AV_SSP_VERSION : ([0-9]*)"
+    ssp2_regex: "AV_SSP_VERSION : ?0+([0-9]*)"
     ssp2_res: "{{ result.stdout | regex_search(ssp2_regex, '\\1') }}"
   set_fact:
     ssp2: "{{ ssp2_res | first }}"

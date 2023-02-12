@@ -11,7 +11,7 @@
   timeout: "{{ timeout }}"
   register: result
   tags:
-    - CM 
+    - CM
 
 - name: Extracting CM RTS version
   vars:
@@ -22,7 +22,7 @@
   when: (appsp_res | length >= 1) and (result is defined)
   delegate_to: localhost
   tags:
-    - CM 
+    - CM
 
 - name: Setting pre10 variable based on CM major release
   vars:
@@ -34,7 +34,7 @@
   when: pre10_res | length >= 1
   delegate_to: localhost
   tags:
-    - CM 
+    - CM
 
 - name: Extracting pre 10 CM KSP version
   vars:
@@ -45,7 +45,7 @@
   when: (pre10) and (ksp_res | length >= 1)
   delegate_to: localhost
   tags:
-    - CM 
+    - CM
 
 - name: Extracting pre 10 CM SSP version
   vars:
@@ -56,25 +56,25 @@
   when: (pre10) and (ssp1_res | length >= 1)
   delegate_to: localhost
   tags:
-    - CM 
+    - CM
 
 - name: Extracting CM SSP version
   vars:
-    ssp2_regex: "AV-CM.*(SSP[0-9]+)"
+    ssp2_regex: "AV-CM.*SSP?0.+([0-9]+)"
     ssp2_res: "{{ result.stdout | regex_search(ssp2_regex, '\\1') }}"
   set_fact:
     ssp2: "{{ ssp2_res | first }}"
   when: (not pre10) and (ssp2_res | length >= 1)
   delegate_to: localhost
   tags:
-    - CM 
+    - CM
 
 - name: Setting CM SSP version
   set_fact:
     ssp: "{{ ssp1 if (ssp1 is defined) else ssp2 }}"
   delegate_to: localhost
   tags:
-    - CM 
+    - CM
 
 - name: Writting CM latest versions to '{{ swversion_stdout }}'
   lineinfile:

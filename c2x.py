@@ -2,6 +2,7 @@ import csv
 import os
 from openpyxl import Workbook, load_workbook
 from openpyxl.styles import Color, Font, PatternFill, Border, Side, Alignment
+from openpyxl.utils import get_column_letter
 
 FONT_BOLD = Font(name='Calibri', size=11, bold=True)
 FG_GRAY = PatternFill(patternType='solid', fgColor='E1E1E1')
@@ -10,7 +11,7 @@ SIDE_THIN = Side(border_style='thin', color='000000')
 SIDE_DOUBLE = Side(border_style='double', color='000000')
 BORDER_THIN = Border(top=SIDE_THIN, bottom=SIDE_THIN, right=SIDE_THIN, left=SIDE_THIN)
 BORDER_DBL_BOTTOM = Border(top=SIDE_THIN, bottom=SIDE_DOUBLE, right=SIDE_THIN, left=SIDE_THIN)
-ALIGN_CENTER = Alignment(horizontal='center')
+ALIGN_HOR_CENTER = Alignment(horizontal='center')
 
 
 def load_csv(csvfile, ws, delimiter=','):
@@ -29,7 +30,7 @@ def adjust_column_widths(ws):
                         (dims.get(cell.column_letter, 0), len(str(cell.value)))
                 )
     for column_letter, width in dims.items():
-        ws.column_dimensions[column_letter].width = width + 1
+        ws.column_dimensions[column_letter].width = width + 2
     return ws
 
 def style_header(ws):
@@ -37,7 +38,7 @@ def style_header(ws):
         col[0].font = FONT_BOLD
         col[0].fill = FG_GRAY
         col[0].border = BORDER_DBL_BOTTOM
-        col[0].alignment = ALIGN_CENTER
+        col[0].alignment = ALIGN_HOR_CENTER
     return ws
 
 def style_products(ws):
@@ -71,11 +72,33 @@ def strip_extension(filename):
     root, _ = os.path.splitext(filename_with_ext)
     return os.path.join(path, root)
 
+def horizontal_align_columns(ws, columns=None, alignment='center'):
+    al = Alignment(horizontal=alignment)
+    if not columns:
+        columns = range(1, ws.max_column + 1)
+    for column in columns:
+        for cell in ws[get_column_letter(column)]:
+            cell.alignment = al
+    return ws
+
+def horizontal_align_rows(ws, rows=None, alignment='center'):
+    al = Alignment(horizontal=alignment)
+    if not rows:
+        rows = range(1, ws.max_rows + 1)
+    for row in rows:
+        for cell in ws[row]:
+            cell.alignment = al
+    return ws
+
 def main(csvfile, inxlsx=None, sheetname=None):
     wb = load_workbook(inxlsx) if inxlsx else Workbook()
     ws = load_ws(wb, inxlsx, sheetname)
     ws = load_csv(csvfile, ws)
     ws = adjust_column_widths(ws)
+    ws = horizontal_align_columns(ws, columns=[3, 4], alignment='center')
+    ws = horizontal_align_columns(ws, columns=[1], alignment='left')
+    ws = horizontal_align_columns(ws, columns=[2, 5, 6, 7, 8], alignment='right')
+    ws = horizontal_align_rows(ws, rows=[1], alignment='center')
     ws = style_header(ws)
     ws = style_products(ws)
     outxlsx = strip_extension(csvfile) + '.xlsx' if not inxlsx else inxlsx
