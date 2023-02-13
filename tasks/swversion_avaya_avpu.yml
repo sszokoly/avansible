@@ -29,7 +29,7 @@
     ssp_regex: "SSP-.*-0?(.*)-.*"
     ssp_res: "{{ result.stdout | regex_search(ssp_regex, '\\1') }}"
   set_fact:
-    ssp: "{{ ssp_res | first }}"
+    ssp: "{{ ssp_res | first | int }}"
   when: ssp_res | length >= 1
   delegate_to: localhost
   tags:
@@ -60,4 +60,5 @@
 
 - name: Resetting SSH connection
   ansible.builtin.meta: reset_connection
+  when: ssh_proxy is defined
 ...

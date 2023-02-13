@@ -60,4 +60,5 @@
 
 - name: Resetting SSH connection
   ansible.builtin.meta: reset_connection
+  when: ssh_proxy is defined
 ...

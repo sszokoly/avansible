@@ -27,25 +27,23 @@ def adjust_column_widths(ws):
         for cell in row:
             if cell.value:
                 dims[cell.column_letter] = max(
-                        (dims.get(cell.column_letter, 0), len(str(cell.value)))
-                )
+                    (dims.get(cell.column_letter, 0),
+                     len(str(cell.value))))
     for column_letter, width in dims.items():
-        ws.column_dimensions[column_letter].width = width + 2
+        ws.column_dimensions[column_letter].width = width + 4
     return ws
 
 def style_header(ws):
     for col in ws.iter_cols(max_row=1):
-        col[0].font = FONT_BOLD
-        col[0].fill = FG_GRAY
-        col[0].border = BORDER_DBL_BOTTOM
-        col[0].alignment = ALIGN_HOR_CENTER
+        col[0].font = Font(name='Calibri', size=11, color='FFFFFF')
+        col[0].fill = PatternFill(patternType='solid', fgColor='1C1C1C')
+        col[0].alignment = Alignment(horizontal='center')
     return ws
 
 def style_products(ws):
     for row in list(ws.rows)[1:]:
         if row[0].value.isupper():
-            row[0].font = FONT_BOLD
-            row[0].fill = FG_ORNG
+            row[0].fill = PatternFill(patternType='solid', fgColor='FF8E4B')
             row[0].border = BORDER_THIN
     return ws
 

@@ -18,7 +18,7 @@
 
 - name: Creating new '{{ swversion_stdout }}'
   copy:
-    content: 'Name,IP,Type,SubType,Application Version,System Layer Version,Security Service Pack,Kernel Service Pack'
+    content: 'Name,IP,Type,SubType,Application,System/Hardware,Security Service Pack,Kernel Service Pack'
     dest: "{{ swversion_stdout }}"
   delegate_to: localhost
   tags:

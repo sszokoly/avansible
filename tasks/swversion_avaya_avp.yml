@@ -26,7 +26,7 @@
 
 - name: Extracting AVP SSP version
   vars:
-    ssp_regex: "Security Service Patch.*-0?([0-9]*)"
+    ssp_regex: "Security Service Patch.*-0.?([0-9]+)"
     ssp_res: "{{ result.stdout | regex_search(ssp_regex, '\\1') }}"
   set_fact:
     ssp: "{{ ssp_res | first }}"
@@ -60,4 +60,5 @@
 
 - name: Resetting SSH connection
   ansible.builtin.meta: reset_connection
+  when: ssh_proxy is defined
 ...

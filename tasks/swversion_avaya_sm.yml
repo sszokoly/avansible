@@ -26,10 +26,12 @@
 
 - name: Extracting SM SSP version
   vars:
-    ssp_regex: "SSP-0.?([0-9]+) .*installed Security Service Pack.*"
+    ssp_regex: "SSP-(?:0.?)?([0-9][0-9])[0-9]* .*installed Security Service Pack.*"
     ssp_res: "{{ result.stdout | regex_search(ssp_regex, '\\1') }}"
-  set_fact:
-    ssp: "{{ ssp_res | first }}"
+  set_fact: 
+    ssp: "{{ ssp_res | first | int }}"
+  when: (ssp_res | length >= 1) and (result is defined)
+  delegate_to: localhost
   tags:
     - SM
 
@@ -58,4 +60,5 @@
 
 - name: Resetting SSH connection
   ansible.builtin.meta: reset_connection
+  when: ssh_proxy is defined
 ...
