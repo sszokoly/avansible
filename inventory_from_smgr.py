@@ -34,17 +34,17 @@ from subprocess import Popen, PIPE
 CMD = '''
 mgmtia avmgmt -P pager=off --csv -c "
 SELECT 
-  app.name,
-  type.displaykey,
-  dev.devicetypename,
-  host.address
+  app.name as name,
+  systype.displaykey as type,
+  dev.devicetypename as device_type,
+  host.address as node
 FROM rts_applicationsystem AS app
 LEFT JOIN rts_host AS host ON app.host_id=host.id
-LEFT JOIN rts_applicationsystemtype AS type ON app.appsystemtypeid=type.id
+LEFT JOIN rts_applicationsystemtype AS systype ON app.appsystemtypeid=systype.id
 LEFT JOIN rts_devicetypes AS dev ON app.devicetypeid=dev.id
-ORDER BY type.name;"
+ORDER BY systype.name;"
 '''
-HEADER = "name,displaykey,devicetypename,address"
+HEADER = "name,type,device_type,node"
 
 def smgr_details():
     host = input("SMGR IP/FQDN:  ")
@@ -99,7 +99,7 @@ def smgr_inventory(host, username, password, root_password):
     start = lines.find(HEADER)
     end = lines.find('root >', start)
     lines = lines[start:end].strip().split('\n')
-    return lines[1:]
+    return lines
 
 def main():
     host, username, password, root_password = smgr_details()
