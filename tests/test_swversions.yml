@@ -9,12 +9,12 @@
     swversion_stdout: swversions.csv
 
   # tasks
-  tasks:
-    - include_tasks: tasks/swversion_create_csv.yml
+  #tasks:
+  #  - include_tasks: tasks/swversion_create_csv.yml
 
 -
   #### ALL ####
-  hosts: kirkutil
+  hosts: AvayaG450A
   gather_facts: False
   ignore_unreachable: true
   ignore_errors: true
@@ -37,6 +37,6 @@
     # latest_slamon_appsp: "4.1.1"
 
   tasks:
-    - include_tasks: test_avpu.yml
+    - include_tasks: test_bgw.yml
       #when: "'SMGR' in group_names"
 ...
