@@ -1,0 +1,118 @@
+---
+- name: Setting ansible_ssh_common_args when ssh_proxy is defined
+  set_fact:
+    ansible_ssh_common_args: "{{ ssh_args }}"
+  when: ssh_proxy is defined
+
+- name: Obtaining `swversion` of {{ inventory_hostname }}
+  shell: "/opt/ecs/bin/swversion"
+  register: swversion_output
+
+- name: Setting 'swversion' fact for {{ inventory_hostname }}
+  set_fact:
+    swversion: "{{ swversion_output.stdout }}"
+    cacheable: yes
+
+- name: Obtaining `av-version` of {{ inventory_hostname }}
+  shell: "/opt/avaya/common-os/bin/av-version"
+  register: av_version_output
+
+- name: Setting 'av_version' fact for {{ inventory_hostname }}
+  set_fact:
+    av_version: "{{ av_version_output.stdout }}"
+    cacheable: yes
+
+- name: Obtaining `statapp` of {{ inventory_hostname }}
+  shell: "/opt/ecs/bin/statapp"
+  register: statapp_output
+
+- name: Setting 'statapp' fact for {{ inventory_hostname }}
+  set_fact:
+    statapp: "{{ statapp_output.stdout }}"
+    cacheable: yes
+
+- name: Obtaining `server` of {{ inventory_hostname }}
+  shell: "/usr/bin/sudo server"
+  register: server_output
+
+- name: Setting 'server' fact for {{ inventory_hostname }}
+  set_fact:
+    server: "{{ server_output.stdout }}"
+    cacheable: yes
+
+- name: Running `almclear -a` of {{ inventory_hostname }}
+  shell: "/opt/ecs/bin/almclear -a"
+
+- name: Obtaining `almdisplay` of {{ inventory_hostname }}
+  shell: "/opt/ecs/bin/almdisplay"
+  register: almdisplay_output
+
+- name: Setting 'server' fact for {{ inventory_hostname }}
+  set_fact:
+    almdisplay: "{{ almdisplay_output.stdout }}"
+    cacheable: yes
+
+- name: Obtaining `backup -t` of {{ inventory_hostname }}
+  shell: "/opt/ecs/sbin/backup -t | head"
+  register: backup_output
+
+- name: Setting 'backup' fact for {{ inventory_hostname }}
+  set_fact:
+    backup: "{{ backup_output.stdout }}"
+    cacheable: yes
+
+- name: Obtaining `statuslicense -s` of {{ inventory_hostname }}
+  shell: "/opt/ecs/bin/statuslicense -s"
+  register: statuslicense_output
+
+- name: Setting 'statuslicense' fact for {{ inventory_hostname }}
+  set_fact:
+    statuslicense: "{{ statuslicense_output.stdout }}"
+    cacheable: yes
+
+- name: Obtaining 'lspNodeList' of {{ inventory_hostname }}
+  slurp:
+    src: /etc/opt/defty/lspNodeList
+  register: lspNodeList
+
+- name: Setting 'lspNodeList' fact for {{ inventory_hostname }}
+  set_fact:
+    lspNodeList: "{{ lspNodeList['content'] | b64decode }}"
+    cacheable: yes
+
+- name: Obtaining 'essNodeList' of {{ inventory_hostname }}
+  slurp:
+    src: /etc/opt/defty/essNodeList
+  register: essNodeList
+
+- name: Setting 'essNodeList' fact for {{ inventory_hostname }}
+  set_fact:
+    essNodeList: "{{ essNodeList['content'] | b64decode }}"
+    cacheable: yes
+
+- name: Obtaining syslog certificates of {{ inventory_hostname }}
+  become: yes
+  slurp:
+    src: $JBOSS_HOME/standalone/configuration/tm/keystore/syslog_keystore.pem
+  register: syslog_keystore
+  when: ansible_become_pass is defined
+
+- name: Obtaining certificates of {{ inventory_hostname }}
+  get_certs:
+    name: "{{ item.name }}"
+    host: "{{ item.host }}"
+    port: "{{ item.port }}"
+    starttls: "{{ item.starttls }}"
+  with_items:
+    - { name: "cm", host: "{{ ansible_host }}", port: 5061 , starttls: "" }
+    - { name: "web_server", host: "{{ ansible_host }}", port: 443, starttls: "" }
+  register: get_certs_output
+
+- name: Setting 'certificates' fact for {{ inventory_hostname }}
+  set_fact:
+    certificates: "{{ certificates | default({}) | combine({ item.1: get_certs_output.results[item.0][item.1] }) }}"
+    cacheable: yes
+  with_indexed_items:
+    - "cm"
+    - "web_server"
+...

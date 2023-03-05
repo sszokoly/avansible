@@ -134,3 +134,4 @@ hosts.*
 .gitignore
 .vscode
 ncs.yml
+facts_cache

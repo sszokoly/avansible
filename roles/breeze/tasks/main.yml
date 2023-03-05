@@ -13,13 +13,13 @@
     swversion: "{{ swversion_output.stdout }}"
     cacheable: yes
 
-- name: Obtaining `av-version` of {{ inventory_hostname }}
-  shell: "/opt/avaya/common-os/bin/av-version"
-  register: av_version_output
+- name: Obtaining `deploy_service -lv` of {{ inventory_hostname }}
+  shell: "sudo /opt/Avaya/aura/bin/deploy_service.sh -lv"
+  register: deploy_service_output
 
-- name: Setting 'av_version' fact for {{ inventory_hostname }}
+- name: Setting 'deploy_service' fact for {{ inventory_hostname }}
   set_fact:
-    av_version: "{{ av_version_output.stdout }}"
+    deploy_service: "{{ deploy_service.stdout }}"
     cacheable: yes
 
 - name: Obtaining `statapp` of {{ inventory_hostname }}

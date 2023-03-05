@@ -1,4 +1,9 @@
 ---
+- name: Setting ansible_ssh_common_args when ssh_proxy is defined
+  set_fact:
+    ansible_ssh_common_args: "{{ ssh_args }}"
+  when: ssh_proxy is defined
+
 - name: Obtaining `chage -l {{ ansible_user }}` for {{ inventory_hostname }}
   shell: "chage -l {{ ansible_user }}"
   register: chage_output
