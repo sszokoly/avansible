@@ -1,0 +1,15 @@
+---
+- name: Setting ansible_ssh_common_args when ssh_proxy is defined
+  set_fact:
+    ansible_ssh_common_args: "{{ ssh_args }}"
+  when: ssh_proxy is defined
+
+- name: Obtaining `swversion` of {{ inventory_hostname }}
+  shell: "/opt/avaya/bin/swversion"
+  register: swversion_output
+
+- name: Setting 'swversion' fact for {{ inventory_hostname }}
+  set_fact:
+    swversion: "{{ swversion_output.stdout }}"
+    cacheable: yes
+...

@@ -1,0 +1,34 @@
+---
+- name: Setting ansible_ssh_common_args when ssh_proxy is defined
+  set_fact:
+    ansible_ssh_common_args: "{{ ssh_args }}"
+  when: ssh_proxy is defined
+
+- name: Obtaining `swversion` of {{ inventory_hostname }}
+  shell: "/opt/avaya/common_services/swversion"
+  register: swversion_output
+
+- name: Setting 'swversion' fact for {{ inventory_hostname }}
+  set_fact:
+    swversion: "{{ swversion_output.stdout }}"
+    cacheable: yes
+
+- name: Obtaining certificates of {{ inventory_hostname }}
+  get_certs:
+    name: "{{ item.name }}"
+    host: "{{ item.host }}"
+    port: "{{ item.port }}"
+    starttls: "{{ item.starttls }}"
+  with_items:
+    - { name: "slamon", host: "{{ ansible_host }}", port: 4511 , starttls: "" }
+    - { name: "salgw", host: "{{ ansible_host }}", port: 7443 , starttls: "" }
+  register: get_certs_output
+
+- name: Setting 'certificates' fact for {{ inventory_hostname }}
+  set_fact:
+    certificates: "{{ certificates | default({}) | combine({ item.1: get_certs_output.results[item.0][item.1] }) }}"
+    cacheable: yes
+  with_indexed_items:
+    - "slamon"
+    - "salgw"
+...

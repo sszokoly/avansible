@@ -1,0 +1,46 @@
+---
+- name: Setting ansible_ssh_common_args when ssh_proxy is defined
+  set_fact:
+    ansible_ssh_common_args: "{{ ssh_args }}"
+  when: ssh_proxy is defined
+
+- name: Obtaining `sysTool -st` of {{ inventory_hostname }}
+  shell: "sudo /opt/avaya/bin/sysTool.sh -st"
+  register: system_version_output
+
+- name: Setting 'system_version' fact for {{ inventory_hostname }}
+  vars:
+    system_version_regex: "System Version[\s:]+([0-9.]+)"
+    system_version_res: "{{ system_version_output.stdout | regex_search(system_version_regex, '\\1') }}"
+  set_fact:
+    system_version: "{{ system_version_res | first }}"
+    cacheable: yes
+
+- name: Obtaining platform version of {{ inventory_hostname }}
+  become: yes
+  shell: "/opt/avaya/app/amsinst/ma/MAS/MySql/bin/mysql -NB -uplatdbuser -pplatdbpass -D emplatcore -e \"SELECT version FROM sw_inventory WHERE swname='platform'\""
+  when: ansible_become_pass is defined
+  register: platform_version_output
+
+- name: Setting 'platform_version' fact for {{ inventory_hostname }}
+  set_fact:
+    platform_version: "{{ platform_version_output.stdout }}"
+  when: ansible_become_pass is defined
+
+- name: Obtaining certificates of {{ inventory_hostname }}
+  get_certs:
+    name: "{{ item.name }}"
+    host: "{{ item.host }}"
+    port: "{{ item.port }}"
+    starttls: "{{ item.starttls }}"
+  with_items:
+    - { name: "web", host: "{{ ansible_host }}", port: 443 , starttls: "" }
+  register: get_certs_output
+
+- name: Setting 'certificates' fact for {{ inventory_hostname }}
+  set_fact:
+    certificates: "{{ certificates | default({}) | combine({ item.1: get_certs_output.results[item.0][item.1] }) }}"
+    cacheable: yes
+  with_indexed_items:
+    - "web"
+...

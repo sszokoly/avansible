@@ -4,15 +4,50 @@
     ansible_ssh_common_args: "{{ ssh_args }}"
   when: ssh_proxy is defined
 
-- name: Obtaining `vim-cmd vimsvc/license` for {{ inventory_hostname }}
-  shell: "vim-cmd vimsvc/{{ item }}"
-  with_items:
-    - "license"
-  register: vim_cmd_vimsvc_output
+- name: Obtaining `vmware -l` of {{ inventory_hostname }}
+  shell: "/bin/vmware -l"
+  register: vmware_level_output
 
-- name: Setting 'vim_cmd_vimsvc' fact for {{ inventory_hostname }}
+- name: Setting 'vmware_level' fact for {{ inventory_hostname }}
   set_fact:
-    vim_cmd_vimsvc: "{{ vim_cmd_vimsvc | default({}) | combine({ item.item: item.stdout }) }}"
+    vmware_level: "{{ vmware_level_output.stdout }}"
     cacheable: yes
-  with_items: "{{ vim_cmd_vimsvc_output.results }}"
+
+- name: Obtaining `vmware -v` of {{ inventory_hostname }}
+  shell: "/bin/vmware -v"
+  register: vmware_version_output
+
+- name: Setting 'vmware_version' fact for {{ inventory_hostname }}
+  set_fact:
+    vmware_version: "{{ vmware_version_output.stdout }}"
+    cacheable: yes
+
+- name: Obtaining vmmare license key for {{ inventory_hostname }}
+  shell: "vim-cmd vimsvc/license --show | grep serial:"
+  register: vmware_license_key_output
+
+- name: Setting 'vmware_license_key' fact for {{ inventory_hostname }}
+  vars:
+    vmware_license_key_regex: "serial: ([^ ]+)"
+    vmware_license_key_res: "{{ vmware_license_key_output.stdout | regex_search(vmware_license_key_regex, '\\1') }}"
+  set_fact:
+    vmware_license_key: "{{ vmware_license_key_res | first }}"
+    cacheable: yes
+
+- name: Obtaining certificates of {{ inventory_hostname }}
+  get_certs:
+    name: "{{ item.name }}"
+    host: "{{ item.host }}"
+    port: "{{ item.port }}"
+    starttls: "{{ item.starttls }}"
+  with_items:
+    - { name: "web", host: "{{ ansible_host }}", port: 443 , starttls: "" }
+  register: get_certs_output
+
+- name: Setting 'certificates' fact for {{ inventory_hostname }}
+  set_fact:
+    certificates: "{{ certificates | default({}) | combine({ item.1: get_certs_output.results[item.0][item.1] }) }}"
+    cacheable: yes
+  with_indexed_items:
+    - "web"
 ...
