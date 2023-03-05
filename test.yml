@@ -1,0 +1,25 @@
+---
+- hosts: SMGR
+  gather_facts: False
+  ignore_unreachable: true
+  ignore_errors: true
+  roles:
+    - base
+    - smgr
+
+- hosts: SM
+  gather_facts: False
+  ignore_unreachable: true
+  ignore_errors: true
+  roles:
+    - base
+    - sm
+
+- hosts: AADS
+  gather_facts: False
+  ignore_unreachable: true
+  ignore_errors: true
+  roles:
+    - base
+    - aads
+...

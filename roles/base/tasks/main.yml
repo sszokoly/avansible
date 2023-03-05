@@ -1,0 +1,26 @@
+---
+- name: Obtaining `chage -l {{ ansible_user }}` for {{ inventory_hostname }}
+  shell: "chage -l {{ ansible_user }}"
+  register: chage_output
+
+- name: Setting 'chage' fact for {{ inventory_hostname }}
+  set_fact:
+    chage: "{{ chage | default({}) | combine({item.key: item.value}) }}"
+    cacheable: yes
+  with_items:
+    - { key: "{{ ansible_user }}", value: "{{ chage_output.stdout }}" }
+
+- name: Obtaining `vmware-toolbox-cmd stat` for {{ inventory_hostname }}
+  shell: "vmware-toolbox-cmd stat {{ item }}"
+  with_items:
+    - "cpures"
+    - "memres"
+  register: vmware_toolbox_cmd_output
+
+- name: Setting 'vmware_toolbox_cmd' fact for {{ inventory_hostname }}
+  set_fact:
+    vmware_toolbox_cmd: "{{ vmware_toolbox_cmd | default({}) | combine({ item.item: item.stdout }) }}"
+    cacheable: yes
+  with_items: "{{ vmware_toolbox_cmd_output.results }}"
+  when: vmware_toolbox_cmd_output is defined
+...

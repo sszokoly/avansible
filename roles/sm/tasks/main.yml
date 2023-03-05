@@ -1,0 +1,79 @@
+---
+- name: Obtaining `swversion` of {{ inventory_hostname }}
+  shell: "sudo /opt/Avaya/bin/swversion"
+  register: swversion_output
+
+- name: Setting 'swversion' fact for {{ inventory_hostname }}
+  set_fact:
+    swversion: "{{ swversion_output.stdout }}"
+    cacheable: yes
+
+- name: Obtaining `av-version` of {{ inventory_hostname }}
+  shell: "/opt/avaya/common-os/bin/av-version"
+  register: av_version_output
+
+- name: Setting 'av_version' fact for {{ inventory_hostname }}
+  set_fact:
+    av_version: "{{ av_version_output.stdout }}"
+    cacheable: yes
+
+- name: Obtaining `statapp` of {{ inventory_hostname }}
+  shell: "/opt/Avaya/bin/statapp"
+  register: statapp_output
+
+- name: Setting 'statapp' fact for {{ inventory_hostname }}
+  set_fact:
+    statapp: "{{ statapp_output.stdout }}"
+    cacheable: yes
+
+- name: Obtaining `smconfig` of {{ inventory_hostname }}
+  shell: "sudo /opt/Avaya/bin/smconfig"
+  register: smconfig_output
+
+- name: Setting 'smconfig' fact for {{ inventory_hostname }}
+  set_fact:
+    smconfig: "{{ smconfig_output.stdout }}"
+    cacheable: yes
+
+- name: Obtaining certificates of {{ inventory_hostname }}
+  vars:
+    secmodip_regex: "Local Security Module: ([^ \n]+)"
+    secmodip: "{{ smconfig_output.stdout | regex_search(secmodip_regex, '\\1') | first }}"
+  get_certs:
+    name: "{{ item.name }}"
+    host: "{{ item.host }}"
+    port: "{{ item.port }}"
+    starttls: "{{ item.starttls }}"
+  with_items:
+    - { name: "securitymodule_sip", host: "{{ secmodip }}", port: 5061 , starttls: "" }
+    - { name: "securitymodule_http", host: "{{ secmodip }}", port: 443, starttls: "" }
+    - { name: "mgmt", host: "{{ ansible_host }}", port: 2009, starttls: "" }
+    - { name: "postgres", host: "127.0.0.1", port: 5432, starttls: "postgres" }
+  register: get_certs_output
+
+- name: Setting 'certificates' fact for {{ inventory_hostname }}
+  set_fact:
+    certificates: "{{ certificates | default({}) | combine({ item.1: get_certs_output.results[item.0][item.1] }) }}"
+    cacheable: yes
+  with_indexed_items:
+    - "securitymodule_sip"
+    - "securitymodule_http"
+    - "mgmt"
+    - "postgres"
+
+# - name: Obtaining syslog certificates of {{ inventory_hostname }}
+#   become: yes
+#   slurp:
+#     src: $JBOSS_HOME/standalone/configuration/tm/keystore/syslog_keystore.pem
+#   register: syslog_keystore
+#   when: ansible_become_pass is defined
+
+# - name: Adding syslog certificate to 'certificates' fact for {{ inventory_hostname }}
+#   vars:
+#     syslog_keystore_regex: "(-----BEGIN CERTIFICATE-----.+?-----END CERTIFICATE-----)"
+#     syslog_keystore_cert: "{{ syslog_keystore['content'] | b64decode | regex_findall(syslog_keystore_regex) }}"
+#   set_fact:
+#     certificates: "{{ certificates | default({}) | combine({ 'syslog': syslog_keystore_cert }) }}"
+#     cacheable: yes
+#   when: ansible_become_pass is defined
+...

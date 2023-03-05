@@ -1,0 +1,43 @@
+---
+- name: Obtaining `swversion` of {{ inventory_hostname }}
+  shell: "sh /opt/Avaya/vsp/swversion.sh"
+  register: swversion_output
+
+- name: Setting 'swversion' fact for {{ inventory_hostname }}
+  set_fact:
+    swversion: "{{ swversion_output.stdout }}"
+    cacheable: yes
+
+- name: Obtaining `av-version` of {{ inventory_hostname }}
+  become: yes
+  shell: "sudo /opt/avaya/common-os/bin/av-version"
+  register: av_version_output
+  when: ansible_become_pass is defined
+
+- name: Setting 'av_version' fact for {{ inventory_hostname }}
+  set_fact:
+    av_version: "{{ av_version_output.stdout }}"
+    cacheable: yes
+  when: ansible_become_pass is defined
+
+- name: Obtaining certificates of {{ inventory_hostname }}
+  get_certs:
+    name: "{{ item.name }}"
+    host: "{{ item.host }}"
+    port: "{{ item.port }}"
+    starttls: "{{ item.starttls }}"
+  with_items:
+    - { name: "container_tls", host: "{{ ansible_host }}", port: 443 , starttls: "" }
+    - { name: "weblm", host: "{{ ansible_host }}", port: 52233, starttls: "" }
+    - { name: "psql", host: "127.0.0.1", port: 5432, starttls: "postgres" }
+  register: get_certs_output
+
+- name: Setting 'certificates' fact for {{ inventory_hostname }}
+  set_fact:
+    certificates: "{{ certificates | default({}) | combine({ item.1: get_certs_output.results[item.0][item.1] }) }}"
+    cacheable: yes
+  with_indexed_items:
+    - "container_tls"
+    - "weblm"
+    - "psql"
+...

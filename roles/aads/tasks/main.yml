@@ -1,0 +1,47 @@
+---
+- name: Obtaining `svc aads swversion` of {{ inventory_hostname }}
+  shell: "/opt/Avaya/bin/sys/alias-wrappers/svc-wrapper.sh aads swversion"
+  register: swversion_output
+
+- name: Setting 'swversion' fact for {{ inventory_hostname }}
+  set_fact:
+    swversion: "{{ swversion_output.stdout }}"
+    cacheable: yes
+
+- name: Obtaining `av-version` of {{ inventory_hostname }}
+  shell: "/opt/avaya/common-os/bin/av-version"
+  register: av_version_output
+
+- name: Setting 'av_version' fact for {{ inventory_hostname }}
+  set_fact:
+    av_version: "{{ av_version_output.stdout }}"
+    cacheable: yes
+
+- name: Obtaining `svc aads status` of {{ inventory_hostname }}
+  shell: "/opt/Avaya/bin/sys/alias-wrappers/svc-wrapper.sh aads status"
+  register: svc_aads_status_output
+
+- name: Setting 'svc_aads_status' fact for {{ inventory_hostname }}
+  set_fact:
+    svc_aads_status: "{{ svc_aads_status_output.stdout }}"
+    cacheable: yes
+
+- name: Obtaining certificates of {{ inventory_hostname }}
+  get_certs:
+    name: "{{ item.name }}"
+    host: "{{ item.host }}"
+    port: "{{ item.port }}"
+    starttls: "{{ item.starttls }}"
+  with_items:
+    - { name: "application", host: "{{ ansible_host }}", port: 443 , starttls: "" }
+    - { name: "internal", host: "{{ ansible_host }}", port: 8458, starttls: "" }
+  register: get_certs_output
+
+- name: Setting 'certificates' fact for {{ inventory_hostname }}
+  set_fact:
+    certificates: "{{ certificates | default({}) | combine({ item.1: get_certs_output.results[item.0][item.1] }) }}"
+    cacheable: yes
+  with_indexed_items:
+    - "application"
+    - "internal"
+...
