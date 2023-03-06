@@ -30,18 +30,40 @@
 #   roles: 
 #     - cm
 
-- hosts: AVP
-  gather_facts: False
-  ignore_unreachable: true
-  ignore_errors: true
-  roles:
-    - avp
+# - hosts: AVP
+#   gather_facts: False
+#   ignore_unreachable: true
+#   ignore_errors: true
+#   roles:
+#     - avp
 
-- hosts: BREEZE
+# - hosts: BREEZE
+#   gather_facts: False
+#   ignore_unreachable: true
+#   ignore_errors: true
+#   roles:
+#     - base
+#     - breeze
+
+# - hosts: g450
+#   gather_facts: False
+#   ignore_unreachable: true
+#   ignore_errors: true
+#   roles:
+#     - bgw
+
+# - hosts: g450
+#   gather_facts: False
+#   ignore_unreachable: true
+#   ignore_errors: true
+#   roles:
+#     - bgw
+
+- hosts: SBCE
   gather_facts: False
   ignore_unreachable: true
   ignore_errors: true
   roles:
     - base
-    - breeze
+    - sbce
 ...

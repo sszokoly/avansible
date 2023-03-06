@@ -1,0 +1,75 @@
+---
+- name: Setting ansible_ssh_common_args when ssh_proxy is defined
+  set_fact:
+    ansible_ssh_common_args: "{{ ssh_args }}"
+  when: ssh_proxy is defined
+
+- name: Obtaining `ipcs-version` of {{ inventory_hostname }}
+  shell: "sudo /usr/local/ipcs/icu/scripts/ipcs-version"
+  register: ipcs_version_output
+
+- name: Setting 'ipcs_version' fact for {{ inventory_hostname }}
+  set_fact:
+    swversion: "{{ ipcs_version_output.stdout }}"
+    cacheable: yes
+
+- name: Obtaining 'sysinfo' file of {{ inventory_hostname }}
+  become: yes
+  slurp:
+    src: /usr/local/ipcs/etc/sysinfo
+  register: sysinfo
+  when: ansible_become_pass is defined
+
+- name: Setting 'sysinfo' fact for {{ inventory_hostname }}
+  vars:
+    syslog_keystore_regex: "(-----BEGIN CERTIFICATE-----.+?-----END CERTIFICATE-----)"
+    syslog_keystore_cert: "{{ syslog_keystore['content'] | b64decode | regex_findall(syslog_keystore_regex) }}"
+  set_fact:
+    sysinfo: "{{ sysinfo['content'] | b64decode }}"
+    cacheable: yes
+  when: ansible_become_pass is defined
+
+- name: Obtaining 'sftp_servers' of {{ inventory_hostname }}
+  become: yes
+  shell: "psql -t -U postgres commondb -AtF',' -c 'select name,user_name,address,location from sftp_servers'"
+  register: sftp_servers_output
+  when: ansible_become_pass is defined
+
+- name: Setting 'sftp_servers' fact for {{ inventory_hostname }}
+  set_fact:
+    sftp_servers: "{{ sftp_servers_output.stdout }}"
+    cacheable: yes
+  when: ansible_become_pass is defined
+
+- name: Obtaining 'gui_config' of {{ inventory_hostname }}
+  become: yes
+  shell: "psql -t -U postgres commondb -AtF',' -c 'select * from gui_config'"
+  register: gui_config_output
+  when: ansible_become_pass is defined
+
+- name: Setting 'gui_config' fact for {{ inventory_hostname }}
+  set_fact:
+    gui_config: "{{ gui_config_output.stdout }}"
+    cacheable: yes
+  when: ansible_become_pass is defined
+
+- name: Getting the list of certificates on {{ inventory_hostname }}
+  become: yes
+  find:
+    paths: "/usr/local/ipcs/cert/certificate/"
+  register: certificate_list
+
+- name: Obtaining certificates of {{ inventory_hostname }}
+  become: yes
+  slurp:
+    src: '{{ item.path }}'
+  register: certificates_files
+  with_items: "{{ certificate_list.files }}"
+
+- name: Adding certificates to 'certificates' fact for {{ inventory_hostname }}
+  set_fact:
+    certificates: "{{ certificates | default({}) | combine({ item['source']: item['content'] | b64decode }) }}"
+    cacheable: yes
+  with_items:
+    - "{{ certificates_files.results }}"
+...

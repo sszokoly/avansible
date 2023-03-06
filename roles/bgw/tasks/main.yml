@@ -1,0 +1,30 @@
+---
+- name: Setting ansible_ssh_common_args when ssh_proxy is defined
+  set_fact:
+    ansible_ssh_common_args: "{{ ssh_args }}"
+  when: ssh_proxy is defined
+
+- name: Obtaining `show system` of {{ inventory_hostname }}
+  avaya_bgw_raw:
+    host: "{{ ansible_host }}"
+    username: "{{ ansible_user }}"
+    password: "{{ ansible_ssh_pass }}"
+    cmd: "{{ item }}"
+  register: sysinfo_output
+  delegate_to: localhost
+  no_log: true
+  with_items:
+    - "show system"
+    - "show mg list_config"
+    - "show faults"
+    - "show mm"
+    - "show platform"
+    - "show voip-dsp"
+
+- name: Setting 'sysinfo' fact for {{ inventory_hostname }}
+  set_fact:
+    sysinfo: "{{ sysinfo | default({}) | combine({ item.item: item.stdout }) }}"
+    cacheable: yes
+  with_items: "{{ sysinfo_output.results }}"
+  when: sysinfo_output is defined
+...
