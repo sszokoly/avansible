@@ -4,6 +4,11 @@
     ansible_ssh_common_args: "{{ ssh_args }}"
   when: ssh_proxy is defined
 
+- name: Setting 'group_names' fact for {{ inventory_hostname }}
+  set_fact:
+    group_names: "{{ group_names }}"
+    cacheable: yes
+
 - name: Obtaining `swversion` of {{ inventory_hostname }}
   shell: "/opt/util/bin/swversion"
   register: swversion_output
@@ -29,4 +34,7 @@
     cacheable: yes
   with_indexed_items:
     - "web"
+
+- name: Running `AVP_SSH_enable` on {{ inventory_hostname }}
+  shell: "/opt/avaya/common_services/AVP_SSH enable"
 ...

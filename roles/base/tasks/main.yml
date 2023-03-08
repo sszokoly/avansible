@@ -4,6 +4,11 @@
     ansible_ssh_common_args: "{{ ssh_args }}"
   when: ssh_proxy is defined
 
+- name: Setting 'group_names' fact for {{ inventory_hostname }}
+  set_fact:
+    group_names: "{{ group_names }}"
+    cacheable: yes
+
 - name: Obtaining `chage -l {{ ansible_user }}` for {{ inventory_hostname }}
   shell: "chage -l {{ ansible_user }}"
   register: chage_output

@@ -4,6 +4,11 @@
     ansible_ssh_common_args: "{{ ssh_args }}"
   when: ssh_proxy is defined
 
+- name: Setting 'group_names' fact for {{ inventory_hostname }}
+  set_fact:
+    group_names: "{{ group_names }}"
+    cacheable: yes
+
 - name: Obtaining `ipcs-version` of {{ inventory_hostname }}
   shell: "sudo /usr/local/ipcs/icu/scripts/ipcs-version"
   register: ipcs_version_output
@@ -31,26 +36,49 @@
 
 - name: Obtaining 'sftp_servers' of {{ inventory_hostname }}
   become: yes
-  shell: "psql -t -U postgres commondb -AtF',' -c 'select name,user_name,address,location from sftp_servers'"
+  shell: "psql -t -U postgres {{ item }} -AtF',' -c 'select name,user_name,address,location from sftp_servers'"
   register: sftp_servers_output
+  with_items:
+    - commondb
+    - sbcedb
   when: ansible_become_pass is defined
 
 - name: Setting 'sftp_servers' fact for {{ inventory_hostname }}
+  vars:
+    keys_list: ['name', 'user', 'ip_port', 'path']
   set_fact:
-    sftp_servers: "{{ sftp_servers_output.stdout }}"
+    sftp_servers: "{{ sftp_servers | default({}) | combine({ item.item: dict(keys_list | zip(item.stdout | split(','))) }) }}"
     cacheable: yes
+  with_items:
+    - "{{ sftp_servers_output.results }}"
   when: ansible_become_pass is defined
+
+- name: Obtaining 'alarms' of {{ inventory_hostname }}
+  shell: "grep -i critical /archive/log/spirit/traps.log|tail -n10"
+  register: alarms_output
+
+- name: Setting 'alarms' fact for {{ inventory_hostname }}
+  set_fact:
+    alarms: "{{ alarms_output.stdout_lines }}"
+    cacheable: yes
 
 - name: Obtaining 'gui_config' of {{ inventory_hostname }}
   become: yes
-  shell: "psql -t -U postgres commondb -AtF',' -c 'select * from gui_config'"
+  shell: psql -t -U postgres commondb -AtF',' -c "select * from gui_config where name LIKE 'RESTORE%'"
   register: gui_config_output
   when: ansible_become_pass is defined
 
-- name: Setting 'gui_config' fact for {{ inventory_hostname }}
+- name: Creating gui_config_list for {{ inventory_hostname }}
   set_fact:
-    gui_config: "{{ gui_config_output.stdout }}"
+    gui_config_list: "{{ gui_config_list | default([]) + [item | lower | split(',', 1)] }}"
+  with_items: "{{ gui_config_output.stdout_lines }}"
+  when: ansible_become_pass is defined
+
+- name: Setting 'backup_config' fact for {{ inventory_hostname }}
+  set_fact:
+    backup_config: "{{ backup_config | default({}) | combine({ item.0: item.1 | default() }) }}"
     cacheable: yes
+  with_list: "{{ gui_config_list }}"
   when: ansible_become_pass is defined
 
 - name: Getting the list of certificates on {{ inventory_hostname }}
@@ -58,6 +86,7 @@
   find:
     paths: "/usr/local/ipcs/cert/certificate/"
   register: certificate_list
+  when: ansible_become_pass is defined
 
 - name: Obtaining certificates of {{ inventory_hostname }}
   become: yes
@@ -68,7 +97,7 @@
 
 - name: Adding certificates to 'certificates' fact for {{ inventory_hostname }}
   set_fact:
-    certificates: "{{ certificates | default({}) | combine({ item['source']: item['content'] | b64decode }) }}"
+    certificates: "{{ certificates | default({}) | combine({ item['source'] | basename : item['content'] | b64decode }) }}"
     cacheable: yes
   with_items:
     - "{{ certificates_files.results }}"

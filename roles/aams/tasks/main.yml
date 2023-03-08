@@ -5,26 +5,127 @@
   when: ssh_proxy is defined
 
 - name: Obtaining `sysTool -st` of {{ inventory_hostname }}
-  shell: "sudo /opt/avaya/bin/sysTool.sh -st"
-  register: system_version_output
+  shell: "sudo /opt/avaya/bin/sysTool.sh -st | grep Version"
+  register: sysTool_output
 
-- name: Setting 'system_version' fact for {{ inventory_hostname }}
+- name: Setting 'sysTool' fact for {{ inventory_hostname }}
   vars:
-    system_version_regex: "System Version[\s:]+([0-9.]+)"
-    system_version_res: "{{ system_version_output.stdout | regex_search(system_version_regex, '\\1') }}"
+    version_regex: "([0-9.]+)"
+    version: "{{ sysTool_output.stdout | regex_search(version_regex, '\\1') | first }}"
   set_fact:
-    system_version: "{{ system_version_res | first }}"
+    sysTool: "{{ version }}"
+    cacheable: yes
+
+- name: Obtaining `EASGStatus` of {{ inventory_hostname }}
+  shell: "/usr/bin/EASGStatus"
+  register: EASGStatus_output
+
+- name: Setting 'EASGStatus' fact for {{ inventory_hostname }}
+  set_fact:
+    EASGStatus: "{{ EASGStatus_output.stdout }}"
     cacheable: yes
 
 - name: Obtaining platform version of {{ inventory_hostname }}
   become: yes
-  shell: "/opt/avaya/app/amsinst/ma/MAS/MySql/bin/mysql -NB -uplatdbuser -pplatdbpass -D emplatcore -e \"SELECT version FROM sw_inventory WHERE swname='platform'\""
+  vars:
+    sql: >
+      "SELECT 
+        version
+      FROM sw_inventory
+      WHERE swname='platform'"
+  shell: "/opt/avaya/app/amsinst/ma/MAS/MySql/bin/mysql -NB -uplatdbuser -pplatdbpass -D emplatcore -e {{ sql }}"
   when: ansible_become_pass is defined
   register: platform_version_output
 
 - name: Setting 'platform_version' fact for {{ inventory_hostname }}
   set_fact:
     platform_version: "{{ platform_version_output.stdout }}"
+    cacheable: yes
+  when: ansible_become_pass is defined
+
+- name: Obtaining backup config from {{ inventory_hostname }}
+  become: yes
+  vars:
+    sql: >
+      "SELECT 
+        dst.destination_name,
+        dst.destination_path,
+        dst.destination_host,
+        dst.destination_username,
+        bkp.backup_schedule
+      FROM destinations AS dst
+      LEFT JOIN backups AS bkp ON bkp.backup_destination_id=dst.destination_id
+      WHERE bkp.backup_schedule is NOT null"
+  shell: '/opt/avaya/app/amsinst/ma/MAS/MySql/bin/mysql -uplatdbuser -pplatdbpass -D eam -e {{ sql }}'
+  when: ansible_become_pass is defined
+  register: backup_config_output
+
+- name: Setting 'backup_config' fact for {{ inventory_hostname }}
+  set_fact:
+    backup_config: "{{ backup_config_output.stdout }}"
+    cacheable: yes
+  when: ansible_become_pass is defined
+
+- name: Obtaining backup history from {{ inventory_hostname }}
+  become: yes
+  vars:
+    sql: >
+      "SELECT
+        task_name,
+        task_status,
+        task_date
+      FROM tasks_log
+      WHERE task_type='Backup'
+      ORDER BY task_date DESC
+      LIMIT 10"
+  shell: '/opt/avaya/app/amsinst/ma/MAS/MySql/bin/mysql -uplatdbuser -pplatdbpass -D eam -e {{ sql }}'
+  when: ansible_become_pass is defined
+  register: backup_history_output
+
+- name: Setting 'backup_history' fact for {{ inventory_hostname }}
+  set_fact:
+    backup_history: "{{ backup_history_output.stdout }}"
+    cacheable: yes
+  when: ansible_become_pass is defined
+
+- name: Obtaining active alarms from {{ inventory_hostname }}
+  become: yes
+  vars:
+    sql: >
+      "SELECT
+        i18n.description,
+        alm.timestamp
+      FROM alarm_i18n AS i18n
+      RIGHT JOIN alarm AS alm
+      ON alm.alarmid=i18n.alarmid
+      ORDER BY alm.timestamp DESC
+      LIMIT 10"
+  shell: '/opt/avaya/app/amsinst/ma/MAS/MySql/bin/mysql -uplatdbuser -pplatdbpass -D emplatcore -e {{ sql }}'
+  when: ansible_become_pass is defined
+  register: alarms_output
+
+- name: Setting 'alarms' fact for {{ inventory_hostname }}
+  set_fact:
+    alarms: "{{ alarms_output.stdout }}"
+    cacheable: yes
+  when: ansible_become_pass is defined
+
+- name: Obtaining 'admin' password set time from {{ inventory_hostname }}
+  become: yes
+  vars:
+    sql: >
+      "SELECT
+        passwd_set_timestamp
+      FROM administrator
+      WHERE name='admin'"
+  shell: '/opt/avaya/app/amsinst/ma/MAS/MySql/bin/mysql -B -uplatdbuser -pplatdbpass -D eam -e {{ sql }}'
+  when: ansible_become_pass is defined
+  register: passwd_set_timestamp
+
+- name: Updating 'chage' facts with 'admin' password set time for {{ inventory_hostname }}
+  set_fact:
+    chage: "{{ chage | default({}) | combine({ 'admin': passwd_set_timestamp.stdout }) }}"
+    cacheable: yes
   when: ansible_become_pass is defined
 
 - name: Obtaining certificates of {{ inventory_hostname }}
@@ -34,7 +135,10 @@
     port: "{{ item.port }}"
     starttls: "{{ item.starttls }}"
   with_items:
-    - { name: "web", host: "{{ ansible_host }}", port: 443 , starttls: "" }
+    - { name: "signaling", host: "{{ ansible_host }}", port: 5061, starttls: "" }
+    - { name: "oam", host: "{{ ansible_host }}", port: 7411, starttls: "" }
+    - { name: "application", host: "{{ ansible_host }}", port: 7151, starttls: "" }
+    - { name: "clustering", host: "127.0.0.1", port: 3306, starttls: "mysql" }
   register: get_certs_output
 
 - name: Setting 'certificates' fact for {{ inventory_hostname }}
@@ -42,5 +146,8 @@
     certificates: "{{ certificates | default({}) | combine({ item.1: get_certs_output.results[item.0][item.1] }) }}"
     cacheable: yes
   with_indexed_items:
-    - "web"
+    - "signaling"
+    - "oam"
+    - "application"
+    - "clustering"
 ...

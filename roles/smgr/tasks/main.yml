@@ -1,4 +1,9 @@
 ---
+- name: Setting ansible_ssh_common_args when ssh_proxy is defined
+  set_fact:
+    ansible_ssh_common_args: "{{ ssh_args }}"
+  when: ssh_proxy is defined
+
 - name: Obtaining `swversion` of {{ inventory_hostname }}
   shell: "sh /opt/Avaya/vsp/swversion.sh"
   register: swversion_output
@@ -17,6 +22,88 @@
 - name: Setting 'av_version' fact for {{ inventory_hostname }}
   set_fact:
     av_version: "{{ av_version_output.stdout }}"
+    cacheable: yes
+  when: ansible_become_pass is defined
+
+- name: Obtaining `EASGStatus` of {{ inventory_hostname }}
+  shell: "/usr/bin/EASGStatus"
+  register: EASGStatus_output
+
+- name: Setting 'EASGStatus' fact for {{ inventory_hostname }}
+  set_fact:
+    EASGStatus: "{{ EASGStatus_output.stdout }}"
+    cacheable: yes
+
+- name: Obtaining active alarms from {{ inventory_hostname }}
+  become: yes
+  vars:
+    sql: >
+      "SELECT
+        receive_ts,
+        severity_desc,
+        alarm_message_text
+      FROM alarm
+      WHERE severity_desc IN ('Major', 'Minor')
+      AND alarm_status_code='Raised'
+      ORDER BY receive_ts DESC
+      LIMIT 10"
+  shell: "/bin/mgmtia avmgmt -P pager=off --csv -c {{ sql }}"
+  when: ansible_become_pass is defined
+  register: alarms_output
+
+- name: Setting 'alarms' fact for {{ inventory_hostname }}
+  set_fact:
+    alarms: "{{ alarms_output.stdout }}"
+    cacheable: yes
+  when: ansible_become_pass is defined
+
+- name: Obtaining backup config from {{ inventory_hostname }}
+  become: yes
+  vars:
+    sql: >
+      "SELECT 
+        pem.backup_scp_login_name,
+        pem.backup_scp_addr,
+        pem.backup_scp_port,
+        pem.file_transfer_protocol,
+        pem.backup_destination,
+        sch.repeat_type
+        FROM pem_backup AS pem
+        LEFT JOIN sched_jobs as sch
+        ON pem.job_name=sch.job_name
+        ORDER BY pem.backup_update_datetime DESC
+        LIMIT 1"
+  shell: "/bin/mgmtia avmgmt -P pager=off --csv -c {{ sql }}"
+  when: ansible_become_pass is defined
+  register: backup_config_output
+
+- name: Setting 'backup_config' fact for {{ inventory_hostname }}
+  set_fact:
+    backup_config: "{{ backup_config_output.stdout }}"
+    cacheable: yes
+  when: ansible_become_pass is defined
+
+- name: Obtaining backup history from {{ inventory_hostname }}
+  become: yes
+  vars:
+    sql: >
+      "SELECT
+        pem.backup_name,
+        pem.backup_status,
+        pem.backup_update_datetime,
+        pem.backup_statusdescription
+        FROM pem_backup AS pem
+        LEFT JOIN sched_jobs as sch
+        ON pem.job_name=sch.job_name
+        ORDER BY pem.backup_update_datetime DESC
+        LIMIT 10"
+  shell: "/bin/mgmtia avmgmt -P pager=off --csv -c {{ sql }}"
+  when: ansible_become_pass is defined
+  register: backup_history_output
+
+- name: Setting 'backup_history' fact for {{ inventory_hostname }}
+  set_fact:
+    backup_history: "{{ backup_history_output.stdout }}"
     cacheable: yes
   when: ansible_become_pass is defined
 

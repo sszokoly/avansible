@@ -4,6 +4,11 @@
     ansible_ssh_common_args: "{{ ssh_args }}"
   when: ssh_proxy is defined
 
+- name: Setting 'group_names' fact for {{ inventory_hostname }}
+  set_fact:
+    group_names: "{{ group_names }}"
+    cacheable: yes
+
 - name: Obtaining `swversion` of {{ inventory_hostname }}
   shell: "/opt/ecs/bin/swversion"
   register: swversion_output
@@ -20,6 +25,15 @@
 - name: Setting 'av_version' fact for {{ inventory_hostname }}
   set_fact:
     av_version: "{{ av_version_output.stdout }}"
+    cacheable: yes
+
+- name: Obtaining `EASGStatus` of {{ inventory_hostname }}
+  shell: "/usr/bin/EASGStatus"
+  register: EASGStatus_output
+
+- name: Setting 'EASGStatus' fact for {{ inventory_hostname }}
+  set_fact:
+    EASGStatus: "{{ EASGStatus_output.stdout }}"
     cacheable: yes
 
 - name: Obtaining `statapp` of {{ inventory_hostname }}
@@ -56,10 +70,32 @@
   shell: "/opt/ecs/sbin/backup -t | head"
   register: backup_output
 
-- name: Setting 'backup' fact for {{ inventory_hostname }}
+- name: Setting 'backup_status' fact for {{ inventory_hostname }}
   set_fact:
-    backup: "{{ backup_output.stdout }}"
+    backup_status: "{{ backup_output.stdout }}"
     cacheable: yes
+
+- name: Getting the list of webbackup cron jobs on {{ inventory_hostname }}
+  become: yes
+  find:
+    paths: "/etc/cron.d/"
+    patterns: 'webbackup*'
+  register: webbackup_list
+  when: ansible_become_pass is defined
+
+- name: Obtaining webbackup cron jobs of {{ inventory_hostname }}
+  become: yes
+  slurp:
+    src: '{{ item.path }}'
+  register: webbackup_files
+  with_items: "{{ webbackup_list.files }}"
+
+- name: Adding webbackup cronjobs to 'webbackups' fact for {{ inventory_hostname }}
+  set_fact:
+    webbackups: "{{ webbackups | default({}) | combine({ item['source'] | basename : item['content'] | b64decode }) }}"
+    cacheable: yes
+  with_items:
+    - "{{ webbackup_files.results }}"
 
 - name: Obtaining `statuslicense -s` of {{ inventory_hostname }}
   shell: "/opt/ecs/bin/statuslicense -s"
@@ -89,13 +125,6 @@
   set_fact:
     essNodeList: "{{ essNodeList['content'] | b64decode }}"
     cacheable: yes
-
-- name: Obtaining syslog certificates of {{ inventory_hostname }}
-  become: yes
-  slurp:
-    src: $JBOSS_HOME/standalone/configuration/tm/keystore/syslog_keystore.pem
-  register: syslog_keystore
-  when: ansible_become_pass is defined
 
 - name: Obtaining certificates of {{ inventory_hostname }}
   get_certs:

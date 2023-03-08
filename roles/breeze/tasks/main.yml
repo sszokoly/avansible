@@ -4,6 +4,11 @@
     ansible_ssh_common_args: "{{ ssh_args }}"
   when: ssh_proxy is defined
 
+- name: Setting 'group_names' fact for {{ inventory_hostname }}
+  set_fact:
+    group_names: "{{ group_names }}"
+    cacheable: yes
+
 - name: Obtaining `swversion` of {{ inventory_hostname }}
   shell: "sudo /opt/Avaya/bin/swversion"
   register: swversion_output
@@ -13,13 +18,25 @@
     swversion: "{{ swversion_output.stdout }}"
     cacheable: yes
 
+- name: Obtaining last 10 backups from 'zr_backuprestore' of {{ inventory_hostname }}
+  become: yes
+  shell: mgmtia -t asm -AtF'|' -c "select service_name,cluster_name,file_name,path_on_server from zr_backuprestore where operation='backup' order by completed_time DESC limit 10"
+  register: backup_status_output
+  when: ansible_become_pass is defined
+
+- name: Setting 'backup_status' fact for {{ inventory_hostname }}
+  set_fact:
+    backup_status: "{{ backup_status_output.stdout }}"
+    cacheable: yes
+  when: ansible_become_pass is defined
+
 - name: Obtaining `deploy_service -lv` of {{ inventory_hostname }}
   shell: "sudo /opt/Avaya/aura/bin/deploy_service.sh -lv"
   register: deploy_service_output
 
 - name: Setting 'deploy_service' fact for {{ inventory_hostname }}
   set_fact:
-    deploy_service: "{{ deploy_service.stdout }}"
+    deploy_service: "{{ deploy_service_output.stdout }}"
     cacheable: yes
 
 - name: Obtaining `statapp` of {{ inventory_hostname }}
@@ -31,26 +48,29 @@
     statapp: "{{ statapp_output.stdout }}"
     cacheable: yes
 
-- name: Obtaining `smconfig` of {{ inventory_hostname }}
-  shell: "sudo /opt/Avaya/bin/smconfig"
-  register: smconfig_output
+- name: Obtaining `ceconfig` of {{ inventory_hostname }}
+  become: yes
+  shell: "sudo /opt/Avaya/bin/ceconfig"
+  register: ceconfig_output
+  when: ansible_become_pass is defined
 
-- name: Setting 'smconfig' fact for {{ inventory_hostname }}
+- name: Setting 'ceconfig' fact for {{ inventory_hostname }}
   set_fact:
-    smconfig: "{{ smconfig_output.stdout }}"
+    ceconfig: "{{ ceconfig_output.stdout }}"
     cacheable: yes
+  when: ansible_become_pass is defined
 
 - name: Obtaining certificates of {{ inventory_hostname }}
   vars:
     secmodip_regex: "Local Security Module: ([^ \n]+)"
-    secmodip: "{{ smconfig_output.stdout | regex_search(secmodip_regex, '\\1') | first }}"
+    secmodip: "{{ ceconfig_output.stdout | regex_search(secmodip_regex, '\\1') | first }}"
   get_certs:
     name: "{{ item.name }}"
     host: "{{ item.host }}"
     port: "{{ item.port }}"
     starttls: "{{ item.starttls }}"
   with_items:
-    - { name: "securitymodule_sip", host: "{{ secmodip }}", port: 5061 , starttls: "" }
+    - { name: "securitymodule_sip", host: "127.0.0.2", port: 15061 , starttls: "" }
     - { name: "securitymodule_http", host: "{{ secmodip }}", port: 443, starttls: "" }
     - { name: "mgmt", host: "{{ ansible_host }}", port: 2009, starttls: "" }
     - { name: "postgres", host: "127.0.0.1", port: 5432, starttls: "postgres" }
