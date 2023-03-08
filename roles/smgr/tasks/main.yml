@@ -26,7 +26,7 @@
   when: ansible_become_pass is defined
 
 - name: Obtaining `EASGStatus` of {{ inventory_hostname }}
-  shell: "/usr/bin/EASGStatus"
+  shell: "echo $(/usr/bin/EASGStatus)"
   register: EASGStatus_output
 
 - name: Setting 'EASGStatus' fact for {{ inventory_hostname }}
@@ -34,7 +34,7 @@
     EASGStatus: "{{ EASGStatus_output.stdout }}"
     cacheable: yes
 
-- name: Obtaining active alarms from {{ inventory_hostname }}
+- name: Obtaining active alarms from {{ inventory_hostname }} database
   become: yes
   vars:
     sql: >
@@ -57,7 +57,27 @@
     cacheable: yes
   when: ansible_become_pass is defined
 
-- name: Obtaining backup config from {{ inventory_hostname }}
+- name: Obtaining recent logs from {{ inventory_hostname }} database
+  become: yes
+  vars:
+    sql: >
+      "SELECT
+        to_timestamp(log_timestamp_num/1000) as date,
+        english_message_text
+      FROM log_store
+      ORDER BY log_timestamp_num DESC
+      LIMIT 10"
+  shell: "/bin/mgmtia avmgmt -P pager=off --csv -c {{ sql }}"
+  when: ansible_become_pass is defined
+  register: log_store_output
+
+- name: Setting 'log_store' fact for {{ inventory_hostname }}
+  set_fact:
+    log_store: "{{ log_store_output.stdout }}"
+    cacheable: yes
+  when: ansible_become_pass is defined
+
+- name: Obtaining backup config from {{ inventory_hostname }} database
   become: yes
   vars:
     sql: >
@@ -68,11 +88,11 @@
         pem.file_transfer_protocol,
         pem.backup_destination,
         sch.repeat_type
-        FROM pem_backup AS pem
-        LEFT JOIN sched_jobs as sch
-        ON pem.job_name=sch.job_name
-        ORDER BY pem.backup_update_datetime DESC
-        LIMIT 1"
+      FROM pem_backup AS pem
+      LEFT JOIN sched_jobs as sch
+      ON pem.job_name=sch.job_name
+      ORDER BY pem.backup_update_datetime DESC
+      LIMIT 1"
   shell: "/bin/mgmtia avmgmt -P pager=off --csv -c {{ sql }}"
   when: ansible_become_pass is defined
   register: backup_config_output
@@ -83,7 +103,7 @@
     cacheable: yes
   when: ansible_become_pass is defined
 
-- name: Obtaining backup history from {{ inventory_hostname }}
+- name: Obtaining backup history from {{ inventory_hostname }} database
   become: yes
   vars:
     sql: >
@@ -92,11 +112,11 @@
         pem.backup_status,
         pem.backup_update_datetime,
         pem.backup_statusdescription
-        FROM pem_backup AS pem
-        LEFT JOIN sched_jobs as sch
-        ON pem.job_name=sch.job_name
-        ORDER BY pem.backup_update_datetime DESC
-        LIMIT 10"
+      FROM pem_backup AS pem
+      LEFT JOIN sched_jobs as sch
+      ON pem.job_name=sch.job_name
+      ORDER BY pem.backup_update_datetime DESC
+      LIMIT 10"
   shell: "/bin/mgmtia avmgmt -P pager=off --csv -c {{ sql }}"
   when: ansible_become_pass is defined
   register: backup_history_output
@@ -107,6 +127,52 @@
     cacheable: yes
   when: ansible_become_pass is defined
 
+- name: Obtaining SM backup history from {{ inventory_hostname }} database
+  become: yes
+  vars:
+    sql: >
+      "SELECT
+        to_timestamp(log_timestamp_num/1000) AS date,
+        host_name,
+        english_message_text
+      FROM log_store
+      WHERE english_message_text LIKE 'Cassandra%'
+      ORDER BY log_timestamp_num DESC
+      LIMIT 10"
+  shell: "/bin/mgmtia avmgmt -P pager=off --csv -c {{ sql }}"
+  when: ansible_become_pass is defined
+  register: sm_backup_history_output
+
+- name: Setting 'sm_backup_history' fact for {{ inventory_hostname }}
+  set_fact:
+    sm_backup_history: "{{ sm_backup_history_output.stdout }}"
+    cacheable: yes
+  when: ansible_become_pass is defined
+
+- name: Obtaining inventory from {{ inventory_hostname }} database
+  become: yes
+  vars:
+    sql: >
+      "SELECT 
+        app.name,
+        type.displaykey,
+        dev.devicetypename,
+        host.address
+      FROM rts_applicationsystem AS app
+      LEFT JOIN rts_host AS host ON app.host_id=host.id
+      LEFT JOIN rts_applicationsystemtype AS type ON app.appsystemtypeid=type.id
+      LEFT JOIN rts_devicetypes AS dev ON app.devicetypeid=dev.id
+      ORDER BY type.name"
+  shell: "/bin/mgmtia avmgmt -P pager=off --csv -c {{ sql }}"
+  when: ansible_become_pass is defined
+  register: inventory_output
+
+- name: Setting 'inventory' fact for {{ inventory_hostname }}
+  set_fact:
+    inventory: "{{ inventory_output.stdout }}"
+    cacheable: yes
+  when: ansible_become_pass is defined
+
 - name: Obtaining certificates of {{ inventory_hostname }}
   get_certs:
     name: "{{ item.name }}"
@@ -114,7 +180,7 @@
     port: "{{ item.port }}"
     starttls: "{{ item.starttls }}"
   with_items:
-    - { name: "container_tls", host: "{{ ansible_host }}", port: 443 , starttls: "" }
+    - { name: "container_tls", host: "{{ ansible_host }}", port: 443, starttls: "" }
     - { name: "weblm", host: "{{ ansible_host }}", port: 52233, starttls: "" }
     - { name: "psql", host: "127.0.0.1", port: 5432, starttls: "postgres" }
   register: get_certs_output
