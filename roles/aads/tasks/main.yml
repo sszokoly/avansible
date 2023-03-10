@@ -1,4 +1,9 @@
 ---
+- name: Setting ansible_ssh_common_args when ssh_proxy is defined
+  set_fact:
+    ansible_ssh_common_args: "{{ ssh_args }}"
+  when: ssh_proxy is defined
+
 - name: Obtaining `svc aads swversion` of {{ inventory_hostname }}
   shell: "/opt/Avaya/bin/sys/alias-wrappers/svc-wrapper.sh aads swversion"
   register: swversion_output
@@ -6,6 +11,24 @@
 - name: Setting 'swversion' fact for {{ inventory_hostname }}
   set_fact:
     swversion: "{{ swversion_output.stdout }}"
+    cacheable: yes
+
+- name: Obtaining `sysUpdate --status` of {{ inventory_hostname }}
+  shell: "sudo /opt/sys-update/sysUpdate.sh --status"
+  register: sysUpdate_output
+
+- name: Updating 'swversion' fact for {{ inventory_hostname }}
+  set_fact:
+    swversion: "{{ '\n'.join((swversion, sysUpdate_output.stdout)) }}"
+    cacheable: yes
+
+- name: Obtaining `EASGStatus` of {{ inventory_hostname }}
+  shell: "echo $(/usr/bin/EASGStatus)"
+  register: EASGStatus_output
+
+- name: Setting 'EASGStatus' fact for {{ inventory_hostname }}
+  set_fact:
+    EASGStatus: "{{ EASGStatus_output.stdout }}"
     cacheable: yes
 
 - name: Obtaining `av-version` of {{ inventory_hostname }}
@@ -24,6 +47,24 @@
 - name: Setting 'svc_aads_status' fact for {{ inventory_hostname }}
   set_fact:
     svc_aads_status: "{{ svc_aads_status_output.stdout }}"
+    cacheable: yes
+
+- name: Obtaining AADS backup history of {{ inventory_hostname }}
+  shell: "ls -ltrd /var/log/Avaya/backup/* | tail"
+  register: adds_backup_history_output
+
+- name: Updating 'backup_history' fact with AADS for {{ inventory_hostname }}
+  set_fact:
+    backup_history: "{{ backup_history | default({}) | combine({ 'aads': aads_backup_history_output.stdout }) }}"
+    cacheable: yes
+
+- name: Obtaining US backup history of {{ inventory_hostname }}
+  shell: "grep 'Final Backup' /var/log/async_plugin_status.log | tail"
+  register: us_backup_history_output
+
+- name: Updating 'backup_history' fact with US for {{ inventory_hostname }}
+  set_fact:
+    backup_history: "{{ backup_history | default({}) | combine({ 'us': us_backup_history_output.stdout }) }}"
     cacheable: yes
 
 - name: Obtaining certificates of {{ inventory_hostname }}

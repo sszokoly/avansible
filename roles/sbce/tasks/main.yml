@@ -84,40 +84,6 @@
     backup_frequency: "{{ backup_frequency | default({}) | combine({ item.item: dict({ 'freq': item.stdout_lines }) }, recursive=True) }}"
   when: ansible_become_pass is defined
   with_items: "{{ gui_config_output.results }}"
-- debug:
-    var: backup_frequency
-
-- name: Loop through nested list
-  vars:
-    my_list:
-      - [item1, [value1, value2, value3]]
-      - [item2, [value4, value5]]
-  debug:
-    msg: "Item: {{ item.0 }}, Subitem: {{ item.1 }}"
-  with_subelements:
-    - "{{ my_list }}"
-    - "[1]"
-
-- name: Convert list to dict
-  debug:
-  #set_fact:
-    msg: "Item: {{ item.0.item }}, Subitem: {{ item.1 }}"
-    #msg: "{{ gui_config_output.results }}"
-    #my_dict: "{{ my_dict | default({}) | combine({ item.0.item: dict(item.1 | map('split', ',', 1) | items2dict }) }}"
-  with_subelements:
-    - "{{ gui_config_output.results }}"
-    - "{{ gui_config_output.results }}"
-
-- debug:
-    var: my_dict
-
-- name: Test
-  set_fact:
-    my_dict: "{{ item.stdout_lines | map('split', ',', 1) | map('list') | list | items2dict }}"
-  with_items: "{{ gui_config_output.results }}"
-- name: Print resulting dictionary
-  debug:
-    var: my_dict
 
 - name: Updating 'backup_config' fact for {{ inventory_hostname }}
   set_fact:
@@ -125,8 +91,6 @@
     cacheable: yes
   with_dict: "{{ backup_frequency }}"
   when: ansible_become_pass is defined
-- debug:
-    var: backup_config
 
 - name: Obtaining active alarms from {{ inventory_hostname }} database
   become: yes

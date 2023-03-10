@@ -9,12 +9,32 @@
     group_names: "{{ group_names }}"
     cacheable: yes
 
+- name: Obtaining `EASGStatus` of {{ inventory_hostname }}
+  shell: "echo $(/bin/EASGStatus)"
+  register: EASGStatus_output
+
+- name: Setting 'EASGStatus' fact for {{ inventory_hostname }}
+  set_fact:
+    EASGStatus: "{{ EASGStatus_output.stdout }}"
+    cacheable: yes
+
 - name: Obtaining `swversion` of {{ inventory_hostname }}
   shell: "/opt/avaya/bin/swversion"
+  retries: 3
+  delay: 30
   register: swversion_output
 
 - name: Setting 'swversion' fact for {{ inventory_hostname }}
   set_fact:
     swversion: "{{ swversion_output.stdout }}"
+    cacheable: yes
+
+- name: Obtaining `statuslicense` of {{ inventory_hostname }}
+  shell: "/opt/avaya/bin/statuslicense"
+  register: statuslicense_output
+
+- name: Setting 'statuslicense' fact for {{ inventory_hostname }}
+  set_fact:
+    statuslicense: "{{ statuslicense_output.stdout }}"
     cacheable: yes
 ...

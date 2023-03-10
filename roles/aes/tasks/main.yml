@@ -4,11 +4,6 @@
     ansible_ssh_common_args: "{{ ssh_args }}"
   when: ssh_proxy is defined
 
-- name: Setting 'group_names' fact for {{ inventory_hostname }}
-  set_fact:
-    group_names: "{{ group_names }}"
-    cacheable: yes
-
 - name: Obtaining `swversion` of {{ inventory_hostname }}
   shell: "/opt/mvap/bin/swversion"
   register: swversion_output
@@ -16,6 +11,15 @@
 - name: Setting 'swversion' fact for {{ inventory_hostname }}
   set_fact:
     swversion: "{{ swversion_output.stdout }}"
+    cacheable: yes
+
+- name: Obtaining `EASGStatus` of {{ inventory_hostname }}
+  shell: "/usr/bin/EASGStatus"
+  register: EASGStatus_output
+
+- name: Setting 'EASGStatus' fact for {{ inventory_hostname }}
+  set_fact:
+    EASGStatus: "{{ EASGStatus_output.stdout }}"
     cacheable: yes
 
 - name: Obtaining `scheduleRemoteBackUp status` of {{ inventory_hostname }}
@@ -29,6 +33,24 @@
     backup_status: "{{ backup_status_output.stdout }}"
     cacheable: yes
   when: ansible_become_pass is defined
+
+- name: Obtaining `/opt/mvap/bin/mvap.sh info` from {{ inventory_hostname }}
+  shell: "/opt/mvap/bin/mvap.sh info"
+  register: mvap_info_output
+
+- name: Setting 'mvap_info' fact for {{ inventory_hostname }}
+  set_fact:
+    mvap_info: "{{ mvap_info_output.stdout }}"
+    cacheable: yes
+
+- name: Obtaining `grep O_A /var/log/avaya/aes/alarm.log | tail` from {{ inventory_hostname }}
+  shell: "grep O_A /var/log/avaya/aes/alarm.log | tail"
+  register: alarms_output
+
+- name: Setting 'alarms' fact for {{ inventory_hostname }}
+  set_fact:
+    alarms: "{{ alarms_output }}"
+    cacheable: yes
 
 - name: Obtaining certificates of {{ inventory_hostname }}
   get_certs:

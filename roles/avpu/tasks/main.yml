@@ -4,11 +4,6 @@
     ansible_ssh_common_args: "{{ ssh_args }}"
   when: ssh_proxy is defined
 
-- name: Setting 'group_names' fact for {{ inventory_hostname }}
-  set_fact:
-    group_names: "{{ group_names }}"
-    cacheable: yes
-
 - name: Obtaining `swversion` of {{ inventory_hostname }}
   shell: "/opt/util/bin/swversion"
   register: swversion_output
@@ -16,6 +11,24 @@
 - name: Setting 'swversion' fact for {{ inventory_hostname }}
   set_fact:
     swversion: "{{ swversion_output.stdout }}"
+    cacheable: yes
+
+- name: Obtaining `EASGStatus` of {{ inventory_hostname }}
+  shell: "echo $(sudo /usr/bin/EASGStatus)"
+  register: EASGStatus_output
+
+- name: Setting 'EASGStatus' fact for {{ inventory_hostname }}
+  set_fact:
+    EASGStatus: "{{ EASGStatus_output.stdout }}"
+    cacheable: yes
+
+- name: Obtaining `Guest_Info` of {{ inventory_hostname }}
+  shell: "/opt/util/bin/Guest_Info"
+  register: guest_info_output
+
+- name: Setting 'guest_info' fact for {{ inventory_hostname }}
+  set_fact:
+    swversion: "{{ guest_info_output.stdout }}"
     cacheable: yes
 
 - name: Obtaining certificates of {{ inventory_hostname }}
