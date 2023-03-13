@@ -13,9 +13,9 @@
   shell: "/bin/vmware -l"
   register: vmware_level_output
 
-- name: Setting 'vmware_level' fact for {{ inventory_hostname }}
+- name: Setting 'swversion' fact for {{ inventory_hostname }}
   set_fact:
-    vmware_level: "{{ vmware_level_output.stdout }}"
+    swversion: "{{ vmware_level_output.stdout }}"
     cacheable: yes
 
 - name: Obtaining `vmware -v` of {{ inventory_hostname }}
@@ -24,7 +24,7 @@
 
 - name: Setting 'vmware_version' fact for {{ inventory_hostname }}
   set_fact:
-    vmware_version: "{{ vmware_version_output.stdout }}"
+    swversion: "{{ swversion + '\n' + vmware_version_output }}"
     cacheable: yes
 
 - name: Obtaining vmmare license key for {{ inventory_hostname }}

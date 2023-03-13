@@ -4,11 +4,6 @@
     ansible_ssh_common_args: "{{ ssh_args }}"
   when: ssh_proxy is defined
 
-- name: Setting 'group_names' fact for {{ inventory_hostname }}
-  set_fact:
-    group_names: "{{ group_names }}"
-    cacheable: yes
-
 - name: Obtaining `swversion` of {{ inventory_hostname }}
   shell: "/opt/ecs/bin/swversion"
   register: swversion_output
@@ -22,10 +17,11 @@
   shell: "/opt/avaya/common-os/bin/av-version"
   register: av_version_output
 
-- name: Setting 'av_version' fact for {{ inventory_hostname }}
+- name: Updating 'swversion' fact for {{ inventory_hostname }}
   set_fact:
-    av_version: "{{ av_version_output.stdout }}"
+    swversion: "{{ swversion + '\n' + av_version_output.stdout }}"
     cacheable: yes
+  when: av_version_output.stdout != ""
 
 - name: Obtaining `EASGStatus` of {{ inventory_hostname }}
   shell: "/usr/bin/EASGStatus"
