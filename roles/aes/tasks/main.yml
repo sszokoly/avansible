@@ -25,12 +25,12 @@
 - name: Obtaining `scheduleRemoteBackUp status` of {{ inventory_hostname }}
   become: yes
   shell: "/opt/mvap/bin/scheduleRemoteBackUp status"
-  register: backup_status_output
+  register: backup_config_output
   when: ansible_become_pass is defined
 
-- name: Setting 'backup_status' fact for {{ inventory_hostname }}
+- name: Setting 'backup_config' fact for {{ inventory_hostname }}
   set_fact:
-    backup_status: "{{ backup_status_output.stdout }}"
+    backup_config: "{{ backup_config_output.stdout }}"
     cacheable: yes
   when: ansible_become_pass is defined
 
@@ -43,8 +43,8 @@
     mvap_info: "{{ mvap_info_output.stdout }}"
     cacheable: yes
 
-- name: Obtaining `grep O_A /var/log/avaya/aes/alarm.log | tail` from {{ inventory_hostname }}
-  shell: "grep O_A /var/log/avaya/aes/alarm.log | tail"
+- name: Obtaining last alarms from {{ inventory_hostname }}
+  shell: "ls -tr /var/log/avaya/aes/alarm.log* | xargs zcat | grep O_ | tail"
   register: alarms_output
 
 - name: Setting 'alarms' fact for {{ inventory_hostname }}

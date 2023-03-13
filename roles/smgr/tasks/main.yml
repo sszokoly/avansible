@@ -14,16 +14,14 @@
     cacheable: yes
 
 - name: Obtaining `av-version` of {{ inventory_hostname }}
-  become: yes
-  shell: "sudo /opt/avaya/common-os/bin/av-version"
+  shell: "/opt/avaya/common-os/bin/av-version"
   register: av_version_output
-  when: ansible_become_pass is defined
 
-- name: Setting 'av_version' fact for {{ inventory_hostname }}
+- name: Updating 'swversion' fact for {{ inventory_hostname }}
   set_fact:
-    av_version: "{{ av_version_output.stdout }}"
+    swversion: "{{ swversion + '\n' + av_version_output.stdout }}"
     cacheable: yes
-  when: ansible_become_pass is defined
+  when: av_version_output.stdout != ""
 
 - name: Obtaining `EASGStatus` of {{ inventory_hostname }}
   shell: "echo $(/usr/bin/EASGStatus)"
@@ -53,7 +51,7 @@
 
 - name: Setting 'alarms' fact for {{ inventory_hostname }}
   set_fact:
-    alarms: "{{ alarms_output.stdout }}"
+    alarms: "{{ alarms | default ({}) | combine({ 'alarm': alarms_output.stdout }) }}"
     cacheable: yes
   when: ansible_become_pass is defined
 
@@ -71,9 +69,9 @@
   when: ansible_become_pass is defined
   register: log_store_output
 
-- name: Setting 'log_store' fact for {{ inventory_hostname }}
+- name: Updating 'alarms' fact for {{ inventory_hostname }}
   set_fact:
-    log_store: "{{ log_store_output.stdout }}"
+    alarms: "{{ alarms | combine({ 'log_store': log_store_output.stdout }) }}"
     cacheable: yes
   when: ansible_become_pass is defined
 
@@ -97,9 +95,9 @@
   when: ansible_become_pass is defined
   register: backup_config_output
 
-- name: Setting 'backup_config' fact for {{ inventory_hostname }}
+- name: Setting 'backup' fact for {{ inventory_hostname }}
   set_fact:
-    backup_config: "{{ backup_config_output.stdout }}"
+    backup: "{{ backup | default({}) | combine({ 'config': backup_config_output.stdout }) }}"
     cacheable: yes
   when: ansible_become_pass is defined
 
@@ -121,9 +119,9 @@
   when: ansible_become_pass is defined
   register: backup_history_output
 
-- name: Setting 'backup_history' fact for {{ inventory_hostname }}
+- name: Updating 'backup' fact for {{ inventory_hostname }}
   set_fact:
-    backup_history: "{{ backup_history_output.stdout }}"
+    backup: "{{ backup | combine({ 'history': backup_history_output.stdout }) }}"
     cacheable: yes
   when: ansible_become_pass is defined
 
@@ -143,9 +141,9 @@
   when: ansible_become_pass is defined
   register: sm_backup_history_output
 
-- name: Setting 'sm_backup_history' fact for {{ inventory_hostname }}
+- name: Setting 'sm_history' fact for {{ inventory_hostname }}
   set_fact:
-    sm_backup_history: "{{ sm_backup_history_output.stdout }}"
+    backup: "{{ backup | combine({ 'sm_history': sm_backup_history_output.stdout }) }}"
     cacheable: yes
   when: ansible_become_pass is defined
 

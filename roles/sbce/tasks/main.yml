@@ -17,7 +17,7 @@
   shell: "sudo /usr/local/ipcs/icu/scripts/ipcs-version"
   register: ipcs_version_output
 
-- name: Setting 'ipcs_version' fact for {{ inventory_hostname }}
+- name: Setting 'swversion' fact for {{ inventory_hostname }}
   set_fact:
     swversion: "{{ ipcs_version_output.stdout }}"
     cacheable: yes
@@ -60,7 +60,6 @@
     keys_list: ['server_name', 'user_name', 'ip_port', 'path']
   set_fact:
     backup_config: "{{ backup_config | default({}) | combine({ item.item: dict(keys_list | zip(item.stdout | split(','))) }) }}"
-    cacheable: yes
   with_items:
     - "{{ sftp_servers_output.results }}"
   when: ansible_become_pass is defined
@@ -85,11 +84,30 @@
   when: ansible_become_pass is defined
   with_items: "{{ gui_config_output.results }}"
 
-- name: Updating 'backup_config' fact for {{ inventory_hostname }}
+- name: Setting 'backup_config' fact for {{ inventory_hostname }}
   set_fact:
     backup_config: "{{ backup_config | combine(backup_frequency, recursive=True) }}"
+  with_dict: "{{ backup_frequency }}"
+  when: ansible_become_pass is defined
+
+- name: Setting 'backup' fact for {{ inventory_hostname }}
+  set_fact:
+    backup: "{{ backup | default({}) | combine({ 'config' : backup_config }) }}"
     cacheable: yes
   with_dict: "{{ backup_frequency }}"
+  when: ansible_become_pass is defined
+
+- name: Obtaining backup history from {{ inventory_hostname }}
+  become: yes
+  slurp:
+    src: "/usr/local/ipcs/snapshots/repo.xml"
+  register: backup_history_output
+  when: ansible_become_pass is defined
+
+- name: Updating 'backup' fact for {{ inventory_hostname }}
+  set_fact:
+    backup: "{{ backup | combine({ 'history': backup_history_output['content'] | b64decode }) }}"
+    cacheable: yes
   when: ansible_become_pass is defined
 
 - name: Obtaining active alarms from {{ inventory_hostname }} database

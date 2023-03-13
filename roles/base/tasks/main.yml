@@ -13,9 +13,9 @@
   shell: "chage -l {{ ansible_user }}"
   register: chage_output
 
-- name: Setting 'chage' fact for {{ inventory_hostname }}
+- name: Setting 'users' fact for {{ inventory_hostname }}
   set_fact:
-    chage: "{{ chage | default({}) | combine({item.key: item.value}) }}"
+    users: "{{ users | default({}) | combine({item.key: item.value}) }}"
     cacheable: yes
   with_items:
     - { key: "{{ ansible_user }}", value: "{{ chage_output.stdout }}" }
