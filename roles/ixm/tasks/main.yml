@@ -1,7 +1,16 @@
 ---
+- name: Obtaining system PATH from {{ inventory_hostname }}
+  raw: $ENV:PATH
+  register: path_output
+
+- name: Setting 'Path' for {{ inventory_hostname }}
+  set_fact:
+    Path: "{{ path_output.stdout }}"
+    cacheable: yes
+
 - name: Setting 'uc_drive' for {{ inventory_hostname }}
   vars:
-    uc_drive_groups: "{{ ansible_env['Path'] | regex_search('([C-Z]):\\\\UC\\\\DB', '\\1') }}"
+    uc_drive_groups: "{{ Path | regex_search('([C-Z]):\\\\UC\\\\DB', '\\1') }}"
   set_fact:
     uc_drive: "{{ uc_drive_groups | first }}"
     cacheable: yes

@@ -95,10 +95,10 @@
 #     - ads
 
 - hosts: sd36ad
-  gather_facts: True
+  gather_facts: False
   ignore_unreachable: true
   ignore_errors: true
   roles:
     - win
-    - ixm
+    #- ixm
 ...
