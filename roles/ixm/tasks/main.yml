@@ -1,0 +1,34 @@
+---
+- name: Setting UC install drive for {{ inventory_hostname }}
+  set_fact:
+    uc_installdir: "C"
+
+- name: Obtaining 'ETSIPService.ini' from {{ inventory_hostname }}
+  ansible.windows.slurp:
+    src: "{{ uc_installdir }}:\\UC\\Configurations\\ETSIPService.ini"
+  register: ETSIPService_file
+
+- name: Adding 'ETSIPService' fact for {{ inventory_hostname }}
+  set_fact:
+    ETSIPService: "{{ ETSIPService_file['content'] | b64decode }}"
+    cacheable: yes
+
+- name: Getting the list of certificates on {{ inventory_hostname }}
+  ansible.windows.win_find:
+    paths: "{{ uc_installdir }}:\\UC\\Certificates"
+    patterns: [ '*.crt', '*.pem', '*.cer' ]
+  register: certificate_list
+  
+- name: Obtaining certificates of {{ inventory_hostname }}
+  ansible.windows.slurp:
+    src: '{{ item.path }}'
+  register: certificates_files
+  with_items: "{{ certificate_list.files }}"
+
+- name: Adding certificates to 'certificates' fact for {{ inventory_hostname }}
+  set_fact:
+    certificates: "{{ certificates | default({}) | combine({ item['item']['filename'] : item['content'] | b64decode }) }}"
+    cacheable: yes
+  with_items:
+    - "{{ certificates_files.results }}"
+...

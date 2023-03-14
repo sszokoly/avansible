@@ -1,0 +1,52 @@
+---
+# - name: with_items (flattens nested lists)
+#   vars:
+#     mylist: [1, [2, 3], 4]
+#   debug:
+#     var: item
+#   with_items: "{{ mylist }}"
+
+# - name: with_list (does NOT flatten nested lists)
+#   vars:
+#     mylist:
+#       - [[1, 2], [3, 4]]
+#   debug:
+#     var: item
+#   with_list: "{{ mylist }}"
+
+# - name: with_list (does NOT flatten nested lists)
+#   vars:
+#     mylist:
+#       - [[1, 2], [3, 4]]
+#   debug:
+#     var: item
+#   with_list: "{{ mylist }}"
+
+# - name: with_items over a dict, you have to know the key names
+#   vars:
+#     mylist:
+#       - { name: 'testuser1', groups: 'wheel' }
+#       - { name: 'testuser2', groups: 'root' }
+#   debug:
+#     msg: "Item name: {{item.name}} Item groups: {{item.groups}}"
+#   with_items: "{{ mylist }}"
+
+# - name: with_dict, you DON'T have to know the key names
+#   vars:
+#     mylist:
+#       - { name: 'testuser1', groups: 'wheel' }
+#       - { name: 'testuser2', groups: 'root' }
+#   debug:
+#     msg: "Item key: {{item.key}}: Item val: {{item.value}}"
+#   with_dict: "{{ mylist }}"
+
+- name: with_dict, you DON'T have to know the key names
+  vars:
+    mylist1: ['a', 'b', 'c']
+    mylist2: [1, 2, 3]
+  debug:
+    msg: "{{item.0}}, {{item.1}}"
+  with_together:
+    - "{{ mylist1 }}"
+    - "{{ mylist2 }}"
+...

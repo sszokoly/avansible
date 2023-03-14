@@ -62,13 +62,13 @@
 #   roles:
 #     - bgw
 
-- hosts: SBCE
-  gather_facts: False
-  ignore_unreachable: true
-  ignore_errors: true
-  roles:
-    - base
-    - sbce
+# - hosts: SBCE
+#   gather_facts: False
+#   ignore_unreachable: true
+#   ignore_errors: true
+#   roles:
+#     - base
+#     - sbce
 
 # - hosts: sd36aams2
 #   gather_facts: False
@@ -93,4 +93,13 @@
 #   roles:
 #     - base
 #     - ads
+
+- hosts: IXM
+  gather_facts: False
+  ignore_unreachable: true
+  ignore_errors: true
+  roles:
+    - win
+    - ixm
+
 ...

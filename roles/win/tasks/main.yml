@@ -1,0 +1,24 @@
+---
+- name: Setting 'group_names' fact for {{ inventory_hostname }}
+  set_fact:
+    group_names: "{{ group_names }}"
+    cacheable: yes
+
+- name: Obtaining `vmware-toolbox-cmd stat` for {{ inventory_hostname }}
+  ansible.windows.win_command:
+    argv: 
+    - C:\Program Files\VMware\VMware Tools\VMwareToolboxCmd.exe
+    - stat 
+    - "{{ item }}"
+  with_items:
+    - "cpures"
+    - "memres"
+  register: vmware_toolbox_cmd_output
+
+- name: Setting 'vmware_toolbox_cmd' fact for {{ inventory_hostname }}
+  set_fact:
+    vmware_toolbox_cmd: "{{ vmware_toolbox_cmd | default({}) | combine({ item.item: item.stdout }) }}"
+    cacheable: yes
+  with_items: "{{ vmware_toolbox_cmd_output.results }}"
+  when: vmware_toolbox_cmd_output is defined
+...
