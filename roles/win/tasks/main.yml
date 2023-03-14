@@ -17,8 +17,21 @@
 
 - name: Setting 'vmware_toolbox_cmd' fact for {{ inventory_hostname }}
   set_fact:
-    vmware_toolbox_cmd: "{{ vmware_toolbox_cmd | default({}) | combine({ item.item: item.stdout }) }}"
+    vmware_toolbox_cmd: "{{ vmware_toolbox_cmd | default({}) | combine({ item.item: item.stdout | trim }) }}"
     cacheable: yes
   with_items: "{{ vmware_toolbox_cmd_output.results }}"
   when: vmware_toolbox_cmd_output is defined
+
+- name: Obtaining `fsutil fsinfo drives` for {{ inventory_hostname }}
+  ansible.windows.win_command:
+    argv: 
+    - fsutil
+    - fsinfo
+    - drives
+  register: drives_output
+
+- name: Setting 'drives' for {{ inventory_hostname }}
+  set_fact:
+    drives: "{{ drives_output.stdout | regex_findall('([C-Z]):') }}"
+    cacheable: yes
 ...

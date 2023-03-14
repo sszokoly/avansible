@@ -94,12 +94,11 @@
 #     - base
 #     - ads
 
-- hosts: IXM
-  gather_facts: False
+- hosts: sd36ad
+  gather_facts: True
   ignore_unreachable: true
   ignore_errors: true
   roles:
     - win
     - ixm
-
 ...
