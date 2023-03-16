@@ -47,13 +47,13 @@
 #     - base 
 #     - avpu
 
-# - hosts: BREEZE
-#   gather_facts: False
-#   ignore_unreachable: true
-#   ignore_errors: true
-#   roles:
-#     - base
-#     - breeze
+- hosts: BREEZE
+  gather_facts: False
+  ignore_unreachable: true
+  ignore_errors: true
+  roles:
+    - base
+    - breeze
 
 # - hosts: g450
 #   gather_facts: False
@@ -94,11 +94,11 @@
 #     - base
 #     - ads
 
-- hosts: sd36ad
-  gather_facts: False
-  ignore_unreachable: true
-  ignore_errors: true
-  roles:
-    - win
-    #- ixm
+# - hosts: sd36ad
+#   gather_facts: False
+#   ignore_unreachable: true
+#   ignore_errors: true
+#   roles:
+#     - win
+#     - ixm
 ...

@@ -3,42 +3,53 @@
   set_fact:
     ansible_ssh_common_args: "{{ ssh_args }}"
   when: ssh_proxy is defined
+  tags:
+  - ssh_proxy
 
-- name: Obtaining `EASGStatus` of {{ inventory_hostname }}
-  shell: "echo $(/usr/bin/EASGStatus) 2>/dev/null"
-  register: EASGStatus_output
-
-- name: Setting 'EASGStatus' fact for {{ inventory_hostname }}
-  set_fact:
-    EASGStatus: "{{ EASGStatus_output.stdout }}"
-    cacheable: yes
-
-- name: Obtaining `ipcs-version` of {{ inventory_hostname }}
+- name: Obtaining `ipcs-version` from {{ inventory_hostname }}
   shell: "sudo /usr/local/ipcs/icu/scripts/ipcs-version"
   register: ipcs_version_output
+  tags:
+  - swversion
 
 - name: Setting 'swversion' fact for {{ inventory_hostname }}
   set_fact:
     swversion: "{{ ipcs_version_output.stdout }}"
     cacheable: yes
+  tags:
+  - swversion
 
-- name: Obtaining 'sysinfo' file of {{ inventory_hostname }}
+- name: Obtaining `EASGStatus` from {{ inventory_hostname }}
+  shell: "echo $(/usr/bin/EASGStatus) 2>/dev/null"
+  register: EASGStatus_output
+  tags:
+  - easg
+
+- name: Setting 'EASGStatus' fact for {{ inventory_hostname }}
+  set_fact:
+    EASGStatus: "{{ EASGStatus_output.stdout }}"
+    cacheable: yes
+  tags:
+  - easg
+
+- name: Obtaining `sysinfo` file from {{ inventory_hostname }}
   become: yes
   slurp:
     src: /usr/local/ipcs/etc/sysinfo
   register: sysinfo
   when: ansible_become_pass is defined
+  tags:
+  - status
 
 - name: Setting 'sysinfo' fact for {{ inventory_hostname }}
-  vars:
-    syslog_keystore_regex: "(-----BEGIN CERTIFICATE-----.+?-----END CERTIFICATE-----)"
-    syslog_keystore_cert: "{{ syslog_keystore['content'] | b64decode | regex_findall(syslog_keystore_regex) }}"
   set_fact:
     sysinfo: "{{ sysinfo['content'] | b64decode }}"
     cacheable: yes
   when: ansible_become_pass is defined
+  tags:
+  - status
 
-- name: Obtaining backup_servers' of {{ inventory_hostname }}
+- name: Obtaining backup_servers from {{ inventory_hostname }} database
   become: yes
   vars:
     sql: >
@@ -54,6 +65,8 @@
     - commondb
     - sbcedb
   when: ansible_become_pass is defined
+  tags:
+  - backup
 
 - name: Setting 'backup_config' fact for {{ inventory_hostname }}
   vars:
@@ -63,8 +76,10 @@
   with_items:
     - "{{ sftp_servers_output.results }}"
   when: ansible_become_pass is defined
+  tags:
+  - backup
 
-- name: Obtaining 'gui_config' of {{ inventory_hostname }}
+- name: Obtaining `gui_config` from {{ inventory_hostname }} database
   become: yes
   vars:
     sql: >
@@ -77,18 +92,24 @@
   with_items:
     - commondb
     - sbcedb
+  tags:
+  - backup
 
 - name: Creating 'backup_frequency' fact for {{ inventory_hostname }}
   set_fact:
     backup_frequency: "{{ backup_frequency | default({}) | combine({ item.item: dict({ 'freq': item.stdout_lines }) }, recursive=True) }}"
   when: ansible_become_pass is defined
   with_items: "{{ gui_config_output.results }}"
+  tags:
+  - backup
 
 - name: Setting 'backup_config' fact for {{ inventory_hostname }}
   set_fact:
     backup_config: "{{ backup_config | combine(backup_frequency, recursive=True) }}"
   with_dict: "{{ backup_frequency }}"
   when: ansible_become_pass is defined
+  tags:
+  - backup
 
 - name: Setting 'backup' fact for {{ inventory_hostname }}
   set_fact:
@@ -96,6 +117,8 @@
     cacheable: yes
   with_dict: "{{ backup_frequency }}"
   when: ansible_become_pass is defined
+  tags:
+  - backup
 
 - name: Obtaining backup history from {{ inventory_hostname }}
   become: yes
@@ -103,12 +126,16 @@
     src: "/usr/local/ipcs/snapshots/repo.xml"
   register: backup_history_output
   when: ansible_become_pass is defined
+  tags:
+  - backup
 
 - name: Updating 'backup' fact for {{ inventory_hostname }}
   set_fact:
     backup: "{{ backup | combine({ 'history': backup_history_output['content'] | b64decode }) }}"
     cacheable: yes
   when: ansible_become_pass is defined
+  tags:
+  - backup
 
 - name: Obtaining active alarms from {{ inventory_hostname }} database
   become: yes
@@ -127,6 +154,8 @@
   with_items:
     - commondb
     - sbcedb
+  tags:
+  - alarms
 
 - name: Setting 'alarms' fact for {{ inventory_hostname }}
   set_fact:
@@ -135,20 +164,26 @@
   with_items:
     - "{{ alarms_output.results }}"
   when: ansible_become_pass is defined
+  tags:
+  - alarms
 
-- name: Getting the list of certificates on {{ inventory_hostname }}
+- name: Getting the list of certificates from {{ inventory_hostname }}
   become: yes
   find:
     paths: "/usr/local/ipcs/cert/certificate/"
   register: certificate_list
   when: ansible_become_pass is defined
+  tags:
+  - certificates
 
-- name: Obtaining certificates of {{ inventory_hostname }}
+- name: Obtaining certificates from {{ inventory_hostname }}
   become: yes
   slurp:
     src: '{{ item.path }}'
   register: certificates_files
   with_items: "{{ certificate_list.files }}"
+  tags:
+  - certificates
 
 - name: Adding certificates to 'certificates' fact for {{ inventory_hostname }}
   set_fact:
@@ -156,4 +191,6 @@
     cacheable: yes
   with_items:
     - "{{ certificates_files.results }}"
+  tags:
+  - certificates
 ...

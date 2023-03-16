@@ -2,11 +2,15 @@
 - name: Obtaining system PATH from {{ inventory_hostname }}
   raw: $ENV:PATH
   register: path_output
+  tags:
+  - certificates
 
 - name: Setting 'Path' for {{ inventory_hostname }}
   set_fact:
     Path: "{{ path_output.stdout }}"
     cacheable: yes
+  tags:
+  - certificates
 
 - name: Setting 'uc_drive' for {{ inventory_hostname }}
   vars:
@@ -15,6 +19,8 @@
     uc_drive: "{{ uc_drive_groups | first }}"
     cacheable: yes
   when: uc_drive_groups | length >= 1
+  tags:
+  - certificates
 
 - name: Obtaining 'ETSIPService.ini' from {{ inventory_hostname }}
   ansible.windows.slurp:
@@ -34,6 +40,8 @@
     patterns: [ '*.crt', '*.pem', '*.cer' ]
   register: certificate_list
   when: uc_drive is defined
+  tags:
+  - certificates
 
 - name: Obtaining certificates of {{ inventory_hostname }}
   ansible.windows.slurp:
@@ -41,6 +49,8 @@
   register: certificates_files
   with_items: "{{ certificate_list.files }}"
   when: certificate_list.files is defined
+  tags:
+  - certificates
 
 - name: Adding certificates to 'certificates' fact for {{ inventory_hostname }}
   set_fact:
@@ -49,4 +59,6 @@
   with_items:
     - "{{ certificates_files.results }}"
   when: certificate_list.files is defined
+  tags:
+  - certificates
 ...

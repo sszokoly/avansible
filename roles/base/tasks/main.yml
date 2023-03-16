@@ -3,15 +3,19 @@
   set_fact:
     ansible_ssh_common_args: "{{ ssh_args }}"
   when: ssh_proxy is defined
+  tags:
+  - ssh_proxy
 
 - name: Setting 'group_names' fact for {{ inventory_hostname }}
   set_fact:
     group_names: "{{ group_names }}"
     cacheable: yes
 
-- name: Obtaining `chage -l {{ ansible_user }}` for {{ inventory_hostname }}
+- name: Obtaining `chage -l {{ ansible_user }}` from {{ inventory_hostname }}
   shell: "chage -l {{ ansible_user }}"
   register: chage_output
+  tags:
+  - users
 
 - name: Setting 'users' fact for {{ inventory_hostname }}
   set_fact:
@@ -19,13 +23,17 @@
     cacheable: yes
   with_items:
     - { key: "{{ ansible_user }}", value: "{{ chage_output.stdout }}" }
+  tags:
+  - users
 
-- name: Obtaining `vmware-toolbox-cmd stat` for {{ inventory_hostname }}
+- name: Obtaining `vmware-toolbox-cmd stat` from {{ inventory_hostname }}
   shell: "vmware-toolbox-cmd stat {{ item }}"
   with_items:
     - "cpures"
     - "memres"
   register: vmware_toolbox_cmd_output
+  tags:
+  - vmware-toolbox
 
 - name: Setting 'vmware_toolbox_cmd' fact for {{ inventory_hostname }}
   set_fact:
@@ -33,4 +41,6 @@
     cacheable: yes
   with_items: "{{ vmware_toolbox_cmd_output.results }}"
   when: vmware_toolbox_cmd_output is defined
+  tags:
+  - vmware-toolbox
 ...

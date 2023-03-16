@@ -3,35 +3,49 @@
   set_fact:
     ansible_ssh_common_args: "{{ ssh_args }}"
   when: ssh_proxy is defined
+  tags:
+  - ssh_proxy
 
-- name: Obtaining `swversion` of {{ inventory_hostname }}
+- name: Obtaining `swversion` from {{ inventory_hostname }}
   shell: "/opt/util/bin/swversion"
   register: swversion_output
+  tags:
+  - swversion
 
 - name: Setting 'swversion' fact for {{ inventory_hostname }}
   set_fact:
     swversion: "{{ swversion_output.stdout }}"
     cacheable: yes
+  tags:
+  - swversion
 
-- name: Obtaining `EASGStatus` of {{ inventory_hostname }}
+- name: Obtaining `EASGStatus` from {{ inventory_hostname }}
   shell: "echo $(sudo /usr/bin/EASGStatus)"
   register: EASGStatus_output
+  tags:
+  - easg
 
 - name: Setting 'EASGStatus' fact for {{ inventory_hostname }}
   set_fact:
     EASGStatus: "{{ EASGStatus_output.stdout }}"
     cacheable: yes
+  tags:
+  - easg
 
-- name: Obtaining `Guest_Info` of {{ inventory_hostname }}
+- name: Obtaining `Guest_Info` from {{ inventory_hostname }}
   shell: "/opt/util/bin/Guest_Info"
   register: guest_info_output
+  tags:
+  - status
 
 - name: Setting 'guest_info' fact for {{ inventory_hostname }}
   set_fact:
     swversion: "{{ guest_info_output.stdout }}"
     cacheable: yes
+  tags:
+  - status
 
-- name: Obtaining certificates of {{ inventory_hostname }}
+- name: Obtaining certificates from {{ inventory_hostname }}
   get_certs:
     name: "{{ item.name }}"
     host: "{{ item.host }}"
@@ -40,6 +54,8 @@
   with_items:
     - { name: "web", host: "{{ ansible_host }}", port: 443 , starttls: "" }
   register: get_certs_output
+  tags:
+  - certificates
 
 - name: Setting 'certificates' fact for {{ inventory_hostname }}
   set_fact:
@@ -47,6 +63,8 @@
     cacheable: yes
   with_indexed_items:
     - "web"
+  tags:
+  - certificates
 
 - name: Running `AVP_SSH_enable` on {{ inventory_hostname }}
   shell: "/opt/avaya/common_services/AVP_SSH enable"

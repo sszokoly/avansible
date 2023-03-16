@@ -3,6 +3,8 @@
   set_fact:
     ansible_ssh_common_args: "{{ ssh_args }}"
   when: ssh_proxy is defined
+  tags:
+  - ssh_proxy
 
 - name: Setting 'group_names' fact for {{ inventory_hostname }}
   set_fact:
@@ -10,7 +12,7 @@
     cacheable: yes
   delegate_to: localhost
 
-- name: Obtaining `show system` of {{ inventory_hostname }}
+- name: Obtaining `show system` from {{ inventory_hostname }}
   avaya_bgw_raw:
     host: "{{ ansible_host }}"
     username: "{{ ansible_user }}"
@@ -26,6 +28,9 @@
     - "show mm"
     - "show platform"
     - "show voip-dsp"
+  tags:
+  - swversion
+  - status
 
 - name: Setting 'sysinfo' fact for {{ inventory_hostname }}
   set_fact:
@@ -33,4 +38,7 @@
     cacheable: yes
   with_items: "{{ sysinfo_output.results }}"
   when: sysinfo_output is defined
+  tags:
+  - swversion
+  - status
 ...

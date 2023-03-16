@@ -3,73 +3,105 @@
   set_fact:
     ansible_ssh_common_args: "{{ ssh_args }}"
   when: ssh_proxy is defined
+  tags:
+  - ssh_proxy
 
-- name: Obtaining `swversion` of {{ inventory_hostname }}
+- name: Obtaining `swversion` from {{ inventory_hostname }}
   shell: "/opt/ecs/bin/swversion"
   register: swversion_output
+  tags:
+  - swversion
 
 - name: Setting 'swversion' fact for {{ inventory_hostname }}
   set_fact:
     swversion: "{{ swversion_output.stdout }}"
     cacheable: yes
+  tags:
+  - swversion
 
-- name: Obtaining `av-version` of {{ inventory_hostname }}
+- name: Obtaining `av-version` from {{ inventory_hostname }}
   shell: "/opt/avaya/common-os/bin/av-version"
   register: av_version_output
+  tags:
+  - swversion
 
 - name: Updating 'swversion' fact for {{ inventory_hostname }}
   set_fact:
     swversion: "{{ swversion + '\n' + av_version_output.stdout }}"
     cacheable: yes
   when: av_version_output.stdout != ""
+  tags:
+  - swversion
 
-- name: Obtaining `EASGStatus` of {{ inventory_hostname }}
+- name: Obtaining `EASGStatus` from {{ inventory_hostname }}
   shell: "/usr/bin/EASGStatus"
   register: EASGStatus_output
+  tags:
+  - easg
 
 - name: Setting 'EASGStatus' fact for {{ inventory_hostname }}
   set_fact:
     EASGStatus: "{{ EASGStatus_output.stdout }}"
     cacheable: yes
+  tags:
+  - easg
 
-- name: Obtaining `statapp` of {{ inventory_hostname }}
+- name: Obtaining `statapp` from {{ inventory_hostname }}
   shell: "/opt/ecs/bin/statapp"
   register: statapp_output
+  tags:
+  - status
 
 - name: Setting 'statapp' fact for {{ inventory_hostname }}
   set_fact:
     statapp: "{{ statapp_output.stdout }}"
     cacheable: yes
+  tags:
+  - status
 
-- name: Obtaining `server` of {{ inventory_hostname }}
+- name: Obtaining `server` from {{ inventory_hostname }}
   shell: "/usr/bin/sudo server"
   register: server_output
+  tags:
+  - status
 
 - name: Setting 'server' fact for {{ inventory_hostname }}
   set_fact:
     server: "{{ server_output.stdout }}"
     cacheable: yes
+  tags:
+  - status
 
-- name: Running `almclear -a` of {{ inventory_hostname }}
+- name: Running `almclear -a` on {{ inventory_hostname }}
   shell: "/opt/ecs/bin/almclear -a"
+  tags:
+  - alarms
 
-- name: Obtaining `almdisplay` of {{ inventory_hostname }}
+- name: Obtaining `almdisplay` from {{ inventory_hostname }}
   shell: "/opt/ecs/bin/almdisplay"
   register: almdisplay_output
+  tags:
+  - alarms
 
-- name: Setting 'server' fact for {{ inventory_hostname }}
+- name: Setting 'alarms' fact for {{ inventory_hostname }}
   set_fact:
-    almdisplay: "{{ almdisplay_output.stdout }}"
+    alarms: "{{ almdisplay_output.stdout }}"
     cacheable: yes
+  tags:
+  - alarms
 
-- name: Obtaining `backup -t` of {{ inventory_hostname }}
+- name: Obtaining `backup -t` from {{ inventory_hostname }}
   shell: "/opt/ecs/sbin/backup -t | head"
   register: backup_output
+  tags:
+  - backup
 
-- name: Setting 'backup_status' fact for {{ inventory_hostname }}
+- name: Setting 'backup' fact for {{ inventory_hostname }}
   set_fact:
-    backup_status: "{{ backup_output.stdout }}"
+    backup: "{{ backup | default({}) | combine({ 'history': backup_output.stdout }) }}"
     cacheable: yes
+  tags:
+  - backup
 
 - name: Getting the list of webbackup cron jobs on {{ inventory_hostname }}
   become: yes
@@ -78,6 +110,8 @@
     patterns: 'webbackup*'
   register: webbackup_list
   when: ansible_become_pass is defined
+  tags:
+  - backup
 
 - name: Obtaining webbackup cron jobs of {{ inventory_hostname }}
   become: yes
@@ -85,24 +119,38 @@
     src: '{{ item.path }}'
   register: webbackup_files
   with_items: "{{ webbackup_list.files }}"
+  tags:
+  - backup
 
 - name: Adding webbackup cronjobs to 'webbackups' fact for {{ inventory_hostname }}
   set_fact:
     webbackups: "{{ webbackups | default({}) | combine({ item['source'] | basename : item['content'] | b64decode }) }}"
-    cacheable: yes
   with_items:
     - "{{ webbackup_files.results }}"
+  tags:
+  - backup
 
-- name: Obtaining `statuslicense -s` of {{ inventory_hostname }}
+- name: Updating 'backup' fact for {{ inventory_hostname }}
+  set_fact:
+    backup: "{{ backup | default({}) | combine({ 'config': webbackups }) }}"
+    cacheable: yes
+  tags:
+  - backup
+
+- name: Obtaining `statuslicense -s` from {{ inventory_hostname }}
   shell: "/opt/ecs/bin/statuslicense -s"
   register: statuslicense_output
+  tags:
+  - licenses
 
 - name: Setting 'statuslicense' fact for {{ inventory_hostname }}
   set_fact:
     statuslicense: "{{ statuslicense_output.stdout }}"
     cacheable: yes
+  tags:
+  - licenses
 
-- name: Obtaining 'lspNodeList' of {{ inventory_hostname }}
+- name: Obtaining 'lspNodeList' from {{ inventory_hostname }}
   slurp:
     src: /etc/opt/defty/lspNodeList
   register: lspNodeList
@@ -117,12 +165,12 @@
     src: /etc/opt/defty/essNodeList
   register: essNodeList
 
-- name: Setting 'essNodeList' fact for {{ inventory_hostname }}
+- name: Setting 'essNodeList' fact from {{ inventory_hostname }}
   set_fact:
     essNodeList: "{{ essNodeList['content'] | b64decode }}"
     cacheable: yes
 
-- name: Obtaining certificates of {{ inventory_hostname }}
+- name: Obtaining certificates from {{ inventory_hostname }}
   get_certs:
     name: "{{ item.name }}"
     host: "{{ item.host }}"
@@ -132,6 +180,8 @@
     - { name: "cm", host: "{{ ansible_host }}", port: 5061 , starttls: "" }
     - { name: "web_server", host: "{{ ansible_host }}", port: 443, starttls: "" }
   register: get_certs_output
+  tags:
+  - certificates
 
 - name: Setting 'certificates' fact for {{ inventory_hostname }}
   set_fact:
@@ -140,4 +190,6 @@
   with_indexed_items:
     - "cm"
     - "web_server"
+  tags:
+  - certificates
 ...

@@ -4,7 +4,7 @@
     group_names: "{{ group_names }}"
     cacheable: yes
 
-- name: Obtaining `vmware-toolbox-cmd stat` for {{ inventory_hostname }}
+- name: Obtaining `vmware-toolbox-cmd stat` from {{ inventory_hostname }}
   ansible.windows.win_command:
     argv: 
     - C:\Program Files\VMware\VMware Tools\VMwareToolboxCmd.exe
@@ -14,6 +14,8 @@
     - "cpures"
     - "memres"
   register: vmware_toolbox_cmd_output
+  tags:
+  - vmware-toolbox
 
 - name: Setting 'vmware_toolbox_cmd' fact for {{ inventory_hostname }}
   set_fact:
@@ -21,8 +23,10 @@
     cacheable: yes
   with_items: "{{ vmware_toolbox_cmd_output.results }}"
   when: vmware_toolbox_cmd_output is defined
+  tags:
+  - vmware-toolbox
 
-- name: Obtaining `fsutil fsinfo drives` for {{ inventory_hostname }}
+- name: Obtaining `fsutil fsinfo drives` from {{ inventory_hostname }}
   ansible.windows.win_command:
     argv: 
     - fsutil
@@ -35,25 +39,33 @@
     drives: "{{ drives_output.stdout | regex_findall('([C-Z]):') }}"
     cacheable: yes
 
-- name: Obtaining `Get-WBSummary` for {{ inventory_hostname }}
+- name: Obtaining `Get-WBSummary` from {{ inventory_hostname }}
   ansible.windows.win_powershell:
     script:  Get-WBSummary
   register: wbsummary_output
+  tags:
+  - backup
 
-- name: Updating 'backup' fact for {{ inventory_hostname }}
+- name: Setting 'backup' fact for {{ inventory_hostname }}
   set_fact:
     backup: "{{ backup | default({}) | combine({ 'history': wbsummary_output.output[0] }) }}"
     cacheable: yes
   when: wbsummary_output is defined
+  tags:
+  - backup
 
-- name: Obtaining `Get-WBPolicy` for {{ inventory_hostname }}
+- name: Obtaining `Get-WBPolicy` from {{ inventory_hostname }}
   ansible.windows.win_powershell:
     script:  Get-WBPolicy
   register: wbpolicy_output
+  tags:
+  - backup
 
 - name: Updating 'backup' fact for {{ inventory_hostname }}
   set_fact:
     backup: "{{ backup | default({}) | combine({ 'config': wbpolicy_output.output[0] }) }}"
     cacheable: yes
   when: wbpolicy_output is defined
+  tags:
+  - backup
 ...

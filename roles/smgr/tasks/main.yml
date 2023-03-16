@@ -3,34 +3,48 @@
   set_fact:
     ansible_ssh_common_args: "{{ ssh_args }}"
   when: ssh_proxy is defined
+  tags:
+  - ssh_proxy
 
-- name: Obtaining `swversion` of {{ inventory_hostname }}
+- name: Obtaining `swversion` from {{ inventory_hostname }}
   shell: "sh /opt/Avaya/vsp/swversion.sh"
   register: swversion_output
+  tags:
+  - swversion
 
 - name: Setting 'swversion' fact for {{ inventory_hostname }}
   set_fact:
     swversion: "{{ swversion_output.stdout }}"
     cacheable: yes
+  tags:
+  - swversion
 
-- name: Obtaining `av-version` of {{ inventory_hostname }}
+- name: Obtaining `av-version` from {{ inventory_hostname }}
   shell: "/opt/avaya/common-os/bin/av-version"
   register: av_version_output
+  tags:
+  - swversion
 
 - name: Updating 'swversion' fact for {{ inventory_hostname }}
   set_fact:
     swversion: "{{ swversion + '\n' + av_version_output.stdout }}"
     cacheable: yes
   when: av_version_output.stdout != ""
+  tags:
+  - swversion
 
-- name: Obtaining `EASGStatus` of {{ inventory_hostname }}
+- name: Obtaining `EASGStatus` from {{ inventory_hostname }}
   shell: "echo $(/usr/bin/EASGStatus)"
   register: EASGStatus_output
+  tags:
+  - easg
 
 - name: Setting 'EASGStatus' fact for {{ inventory_hostname }}
   set_fact:
     EASGStatus: "{{ EASGStatus_output.stdout }}"
     cacheable: yes
+  tags:
+  - easg
 
 - name: Obtaining active alarms from {{ inventory_hostname }} database
   become: yes
@@ -48,12 +62,16 @@
   shell: "/bin/mgmtia avmgmt -P pager=off --csv -c {{ sql }}"
   when: ansible_become_pass is defined
   register: alarms_output
+  tags:
+  - alarms
 
 - name: Setting 'alarms' fact for {{ inventory_hostname }}
   set_fact:
     alarms: "{{ alarms | default ({}) | combine({ 'alarm': alarms_output.stdout }) }}"
     cacheable: yes
   when: ansible_become_pass is defined
+  tags:
+  - alarms
 
 - name: Obtaining recent logs from {{ inventory_hostname }} database
   become: yes
@@ -68,12 +86,16 @@
   shell: "/bin/mgmtia avmgmt -P pager=off --csv -c {{ sql }}"
   when: ansible_become_pass is defined
   register: log_store_output
+  tags:
+  - alarms
 
 - name: Updating 'alarms' fact for {{ inventory_hostname }}
   set_fact:
     alarms: "{{ alarms | combine({ 'log_store': log_store_output.stdout }) }}"
     cacheable: yes
   when: ansible_become_pass is defined
+  tags:
+  - alarms
 
 - name: Obtaining backup config from {{ inventory_hostname }} database
   become: yes
@@ -94,12 +116,16 @@
   shell: "/bin/mgmtia avmgmt -P pager=off --csv -c {{ sql }}"
   when: ansible_become_pass is defined
   register: backup_config_output
+  tags:
+  - backup
 
 - name: Setting 'backup' fact for {{ inventory_hostname }}
   set_fact:
     backup: "{{ backup | default({}) | combine({ 'config': backup_config_output.stdout }) }}"
     cacheable: yes
   when: ansible_become_pass is defined
+  tags:
+  - backup
 
 - name: Obtaining backup history from {{ inventory_hostname }} database
   become: yes
@@ -118,12 +144,16 @@
   shell: "/bin/mgmtia avmgmt -P pager=off --csv -c {{ sql }}"
   when: ansible_become_pass is defined
   register: backup_history_output
+  tags:
+  - backup
 
 - name: Updating 'backup' fact for {{ inventory_hostname }}
   set_fact:
     backup: "{{ backup | combine({ 'history': backup_history_output.stdout }) }}"
     cacheable: yes
   when: ansible_become_pass is defined
+  tags:
+  - backup
 
 - name: Obtaining SM backup history from {{ inventory_hostname }} database
   become: yes
@@ -140,12 +170,16 @@
   shell: "/bin/mgmtia avmgmt -P pager=off --csv -c {{ sql }}"
   when: ansible_become_pass is defined
   register: sm_backup_history_output
+  tags:
+  - backup
 
 - name: Setting 'sm_history' fact for {{ inventory_hostname }}
   set_fact:
     backup: "{{ backup | combine({ 'sm_history': sm_backup_history_output.stdout }) }}"
     cacheable: yes
   when: ansible_become_pass is defined
+  tags:
+  - backup
 
 - name: Obtaining inventory from {{ inventory_hostname }} database
   become: yes
@@ -164,14 +198,18 @@
   shell: "/bin/mgmtia avmgmt -P pager=off --csv -c {{ sql }}"
   when: ansible_become_pass is defined
   register: inventory_output
+  tags:
+  - inventory
 
 - name: Setting 'inventory' fact for {{ inventory_hostname }}
   set_fact:
     inventory: "{{ inventory_output.stdout }}"
     cacheable: yes
   when: ansible_become_pass is defined
+  tags:
+  - inventory
 
-- name: Obtaining certificates of {{ inventory_hostname }}
+- name: Obtaining certificates from {{ inventory_hostname }}
   get_certs:
     name: "{{ item.name }}"
     host: "{{ item.host }}"
@@ -182,6 +220,8 @@
     - { name: "weblm", host: "{{ ansible_host }}", port: 52233, starttls: "" }
     - { name: "psql", host: "127.0.0.1", port: 5432, starttls: "postgres" }
   register: get_certs_output
+  tags:
+  - certificates
 
 - name: Setting 'certificates' fact for {{ inventory_hostname }}
   set_fact:
@@ -191,4 +231,6 @@
     - "container_tls"
     - "weblm"
     - "psql"
+  tags:
+  - certificates
 ...

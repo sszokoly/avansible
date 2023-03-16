@@ -3,33 +3,45 @@
   set_fact:
     ansible_ssh_common_args: "{{ ssh_args }}"
   when: ssh_proxy is defined
+  tags:
+  - ssh_proxy
 
 - name: Setting 'group_names' fact for {{ inventory_hostname }}
   set_fact:
     group_names: "{{ group_names }}"
     cacheable: yes
 
-- name: Obtaining `vmware -l` of {{ inventory_hostname }}
+- name: Obtaining `vmware -l` from {{ inventory_hostname }}
   shell: "/bin/vmware -l"
   register: vmware_level_output
+  tags:
+  - swversion
 
 - name: Setting 'swversion' fact for {{ inventory_hostname }}
   set_fact:
     swversion: "{{ vmware_level_output.stdout }}"
     cacheable: yes
+  tags:
+  - swversion
 
-- name: Obtaining `vmware -v` of {{ inventory_hostname }}
+- name: Obtaining `vmware -v` from {{ inventory_hostname }}
   shell: "/bin/vmware -v"
   register: vmware_version_output
+  tags:
+  - swversion
 
 - name: Setting 'vmware_version' fact for {{ inventory_hostname }}
   set_fact:
     swversion: "{{ swversion + '\n' + vmware_version_output }}"
     cacheable: yes
+  tags:
+  - swversion
 
-- name: Obtaining vmmare license key for {{ inventory_hostname }}
+- name: Obtaining vmmare license key from {{ inventory_hostname }}
   shell: "vim-cmd vimsvc/license --show | grep serial:"
   register: vmware_license_key_output
+  tags:
+  - licenses
 
 - name: Setting 'vmware_license_key' fact for {{ inventory_hostname }}
   vars:
@@ -38,8 +50,10 @@
   set_fact:
     vmware_license_key: "{{ vmware_license_key_res | first }}"
     cacheable: yes
+  tags:
+  - licenses
 
-- name: Obtaining certificates of {{ inventory_hostname }}
+- name: Obtaining certificates from {{ inventory_hostname }}
   get_certs:
     name: "{{ item.name }}"
     host: "{{ item.host }}"
@@ -48,6 +62,8 @@
   with_items:
     - { name: "web", host: "{{ ansible_host }}", port: 443 , starttls: "" }
   register: get_certs_output
+  tags:
+  - certificates
 
 - name: Setting 'certificates' fact for {{ inventory_hostname }}
   set_fact:
@@ -55,4 +71,6 @@
     cacheable: yes
   with_indexed_items:
     - "web"
+  tags:
+  - certificates
 ...
