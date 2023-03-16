@@ -3,29 +3,23 @@
   set_fact:
     ansible_ssh_common_args: "{{ ssh_args }}"
   when: ssh_proxy is defined
+  tags:
+  - ssh_proxy
 
-- name: Obtaining `sysTool -st` of {{ inventory_hostname }}
-  shell: "sudo /opt/avaya/bin/sysTool.sh -st | grep Version"
+- name: Obtaining `sysTool -st` from {{ inventory_hostname }}
+  shell: "sudo /opt/avaya/bin/sysTool.sh -st"
   register: sysTool_output
+  tags:
+  - swversion
 
 - name: Setting 'sysTool' fact for {{ inventory_hostname }}
-  vars:
-    version_regex: "([0-9.]+)"
-    version: "{{ sysTool_output.stdout | regex_search(version_regex, '\\1') | first }}"
   set_fact:
-    sysTool: "{{ version }}"
+    swversion: "{{ swversion | default({}) | combine({ 'sysTool': sysTool_output.stdout }) }}"
     cacheable: yes
+  tags:
+  - swversion
 
-- name: Obtaining `EASGStatus` of {{ inventory_hostname }}
-  shell: "/usr/bin/EASGStatus"
-  register: EASGStatus_output
-
-- name: Setting 'EASGStatus' fact for {{ inventory_hostname }}
-  set_fact:
-    EASGStatus: "{{ EASGStatus_output.stdout }}"
-    cacheable: yes
-
-- name: Obtaining platform version of {{ inventory_hostname }}
+- name: Obtaining platform version from {{ inventory_hostname }} database
   become: yes
   vars:
     sql: >
@@ -36,14 +30,31 @@
   shell: "/opt/avaya/app/amsinst/ma/MAS/MySql/bin/mysql -NB -uplatdbuser -pplatdbpass -D emplatcore -e {{ sql }}"
   when: ansible_become_pass is defined
   register: platform_version_output
+  tags:
+  - swversion
 
-- name: Setting 'platform_version' fact for {{ inventory_hostname }}
+- name: Updating 'swversion' fact for {{ inventory_hostname }}
   set_fact:
-    platform_version: "{{ platform_version_output.stdout }}"
+    swversion: "{{ swversion | default({}) | combine({ 'platform': platform_version_output.stdout }) }}"
     cacheable: yes
-  when: ansible_become_pass is defined
+  when: ansible_become_pass is defined and platform_version_output.stdout != ""
+  tags:
+  - swversion
 
-- name: Obtaining backup config from {{ inventory_hostname }}
+- name: Obtaining `EASGStatus` of {{ inventory_hostname }}
+  shell: "/usr/bin/EASGStatus"
+  register: EASGStatus_output
+  tags:
+  - easg
+
+- name: Setting 'EASGStatus' fact for {{ inventory_hostname }}
+  set_fact:
+    EASGStatus: "{{ EASGStatus_output.stdout }}"
+    cacheable: yes
+  tags:
+  - easg
+
+- name: Obtaining backup config from {{ inventory_hostname }} database
   become: yes
   vars:
     sql: >
@@ -59,14 +70,18 @@
   shell: '/opt/avaya/app/amsinst/ma/MAS/MySql/bin/mysql -uplatdbuser -pplatdbpass -D eam -e {{ sql }}'
   when: ansible_become_pass is defined
   register: backup_config_output
+  tags:
+  - backup
 
-- name: Setting 'backup_config' fact for {{ inventory_hostname }}
+- name: Setting 'backup' fact for {{ inventory_hostname }}
   set_fact:
-    backup_config: "{{ backup_config_output.stdout }}"
+    backup: "{{ backup | default({}) | combine({ 'config': backup_config_output.stdout }) }}"
     cacheable: yes
-  when: ansible_become_pass is defined
+  when: ansible_become_pass is defined and backup_config_output.stdout != ""
+  tags:
+  - backup
 
-- name: Obtaining backup history from {{ inventory_hostname }}
+- name: Obtaining backup history from {{ inventory_hostname }} database
   become: yes
   vars:
     sql: >
@@ -81,14 +96,18 @@
   shell: '/opt/avaya/app/amsinst/ma/MAS/MySql/bin/mysql -uplatdbuser -pplatdbpass -D eam -e {{ sql }}'
   when: ansible_become_pass is defined
   register: backup_history_output
+  tags:
+  - backup
 
-- name: Setting 'backup_history' fact for {{ inventory_hostname }}
+- name: Updating 'backup' fact for {{ inventory_hostname }}
   set_fact:
-    backup_history: "{{ backup_history_output.stdout }}"
+    backup: "{{ backup | default({}) | combine({ 'history': backup_history_output.stdout }) }}"
     cacheable: yes
-  when: ansible_become_pass is defined
+  when: ansible_become_pass is defined and backup_history_output.stdout != ""
+  tags:
+  - backup
 
-- name: Obtaining active alarms from {{ inventory_hostname }}
+- name: Obtaining active alarms from {{ inventory_hostname }} database
   become: yes
   vars:
     sql: >
@@ -103,12 +122,16 @@
   shell: '/opt/avaya/app/amsinst/ma/MAS/MySql/bin/mysql -uplatdbuser -pplatdbpass -D emplatcore -e {{ sql }}'
   when: ansible_become_pass is defined
   register: alarms_output
+  tags:
+  - alarms
 
 - name: Setting 'alarms' fact for {{ inventory_hostname }}
   set_fact:
     alarms: "{{ alarms_output.stdout }}"
     cacheable: yes
-  when: ansible_become_pass is defined
+  when: ansible_become_pass is defined and alarms_output.stdout != ""
+  tags:
+  - alarms
 
 - name: Obtaining 'admin' password set time from {{ inventory_hostname }}
   become: yes
@@ -121,14 +144,18 @@
   shell: '/opt/avaya/app/amsinst/ma/MAS/MySql/bin/mysql -B -uplatdbuser -pplatdbpass -D eam -e {{ sql }}'
   when: ansible_become_pass is defined
   register: passwd_set_timestamp
+  tags:
+  - users
 
 - name: Updating 'users' facts with Web 'admin' password set time for {{ inventory_hostname }}
   set_fact:
     users: "{{ users | default({}) | combine({ 'admin': passwd_set_timestamp.stdout }) }}"
     cacheable: yes
   when: ansible_become_pass is defined
+  tags:
+  - users
 
-- name: Obtaining certificates of {{ inventory_hostname }}
+- name: Obtaining certificates from {{ inventory_hostname }}
   get_certs:
     name: "{{ item.name }}"
     host: "{{ item.host }}"
@@ -140,6 +167,8 @@
     - { name: "application", host: "{{ ansible_host }}", port: 7151, starttls: "" }
     - { name: "clustering", host: "127.0.0.1", port: 3306, starttls: "mysql" }
   register: get_certs_output
+  tags:
+  - certificates
 
 - name: Setting 'certificates' fact for {{ inventory_hostname }}
   set_fact:
@@ -150,4 +179,6 @@
     - "oam"
     - "application"
     - "clustering"
+  tags:
+  - certificates
 ...

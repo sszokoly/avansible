@@ -3,58 +3,82 @@
   set_fact:
     ansible_ssh_common_args: "{{ ssh_args }}"
   when: ssh_proxy is defined
+  tags:
+  - ssh_proxy
 
-- name: Obtaining `swversion` of {{ inventory_hostname }}
+- name: Obtaining `swversion` from {{ inventory_hostname }}
   become: yes
   shell: "/opt/avaya/common_services/swversion"
   register: swversion_output
+  tags:
+  - swversion
 
 - name: Setting 'swversion' fact for {{ inventory_hostname }}
   set_fact:
     swversion: "{{ swversion_output.stdout }}"
     cacheable: yes
+  tags:
+  - swversion
 
-- name: Obtaining `EASGStatus` of {{ inventory_hostname }}
+- name: Obtaining `EASGStatus` from {{ inventory_hostname }}
   shell: "echo $(/usr/bin/EASGStatus)"
   register: EASGStatus_output
+  tags:
+  - easg
 
 - name: Setting 'EASGStatus' fact for {{ inventory_hostname }}
   set_fact:
     EASGStatus: "{{ EASGStatus_output.stdout }}"
     cacheable: yes
+  tags:
+  - easg
 
-- name: Obtaining SALMon backup history of {{ inventory_hostname }}
-  shell: "grep 'backup is created' /var/log/backup.log | tail"
+- name: Obtaining SALMon backup history from {{ inventory_hostname }}
+  shell: "ls -dltr /vm-data/backup/archives/*"
   register: salmon_backup_history
+  tags:
+  - backup
 
-- name: Setting 'backup_history' fact with SALMon for {{ inventory_hostname }}
+- name: Setting 'backup' fact with SALMon for {{ inventory_hostname }}
   set_fact:
-    backup_history: "{{ backup_history | default({}) | combine({ 'salmon': salmon_backup_history.stdout }) }}"
+    backup: "{{ backup | default({}) | combine({ 'history': dict({ 'slamon': salmon_backup_history.stdout }) }) }}"
     cacheable: yes
+  when: salmon_backup_history.stdout != ""
+  tags:
+  - backup
 
-- name: Obtaining SALGW backup history of {{ inventory_hostname }}
+- name: Obtaining SALGW backup history from {{ inventory_hostname }}
   shell: "ls -tr /var/log/SALLogs/messages.log* | xargs grep 'backup is completed' | tail | sort | uniq"
   register: salgw_backup_history
+  tags:
+  - backup
 
-- name: Updating 'backup_history' fact with SALGW for {{ inventory_hostname }}
+- name: Updating 'backup' fact with SALGW for {{ inventory_hostname }}
   set_fact:
-    backup_history: "{{ backup_history | default({}) | combine({ 'salgw': salgw_backup_history.stdout }) }}"
+    backup: "{{ backup | default({}) | combine({ 'history': dict({ 'salgw': salgw_backup_history.stdout }) }) }}"
     cacheable: yes
+  when: salgw_backup_history.stdout != ""
+  tags:
+  - backup
 
-- name: Obtaining SALGW 'backupConfig.xml' of {{ inventory_hostname }}
+- name: Obtaining SALGW 'backupConfig.xml' from {{ inventory_hostname }}
   become: yes
   slurp:
     src: /opt/avaya/SAL/gateway/GatewayUI/config/backupConfig.xml
   register: backupConfig
   when: ansible_become_pass is defined
+  tags:
+  - backup
 
-- name: Setting 'backup_config' fact with backupConfig for {{ inventory_hostname }}
+- name: Updating 'backup' fact with backupConfig for {{ inventory_hostname }}
   set_fact:
-    backup_config: "{{ backup_config | default({}) | combine({ 'salgw': backupConfig['content'] | b64decode }) }}"
+    backup: "{{ backup | default({}) | combine({ 'config': dict({ 'salgw': backupConfig['content'] | b64decode }) }) }}"
     cacheable: yes
-  when: ansible_become_pass is defined
+  when: ansible_become_pass is defined and backupConfig.content is defined
+  tags:
+  - backup
 
-- name: Obtaining certificates of {{ inventory_hostname }}
+- name: Obtaining certificates from {{ inventory_hostname }}
   get_certs:
     name: "{{ item.name }}"
     host: "{{ item.host }}"
@@ -64,6 +88,8 @@
     - { name: "slamon", host: "{{ ansible_host }}", port: 4511 , starttls: "" }
     - { name: "salgw", host: "{{ ansible_host }}", port: 7443 , starttls: "" }
   register: get_certs_output
+  tags:
+  - certificates
 
 - name: Setting 'certificates' fact for {{ inventory_hostname }}
   set_fact:
@@ -72,4 +98,6 @@
   with_indexed_items:
     - "slamon"
     - "salgw"
+  tags:
+  - certificates
 ...
