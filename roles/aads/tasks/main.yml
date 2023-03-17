@@ -40,7 +40,7 @@
 
 - name: Setting 'av_version' fact for {{ inventory_hostname }}
   set_fact:
-    av_version: "{{ av_version_output.stdout }}"
+    swversion: "{{ '\n'.join((swversion, av_version_output.stdout)) }}"
     cacheable: yes
   tags:
   - swversion
@@ -79,8 +79,9 @@
 
 - name: Updating 'backup_history' fact with AADS for {{ inventory_hostname }}
   set_fact:
-    backup_history: "{{ backup_history | default({}) | combine({ 'aads': aads_backup_history_output.stdout }) }}"
+    backup: "{{ backup | default({}) | combine({ 'history': dict({ 'auto': aads_backup_history_output.stdout }) }) }}"
     cacheable: yes
+  when: aads_backup_history_output.stdout != ""
   tags:
   - backup
 
@@ -92,8 +93,9 @@
 
 - name: Updating 'backup_history' fact with US for {{ inventory_hostname }}
   set_fact:
-    backup_history: "{{ backup_history | default({}) | combine({ 'us': us_backup_history_output.stdout }) }}"
+    backup: "{{ backup | default({}) | combine({ 'history': dict({'us': us_backup_history_output.stdout }) }) }}"
     cacheable: yes
+  when: us_backup_history_output.stdout != ""
   tags:
   - backup
 
