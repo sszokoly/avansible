@@ -15,13 +15,13 @@
 #     - base
 #     - sm
 
-# - hosts: sd36aads1
-#   gather_facts: False
-#   ignore_unreachable: true
-#   ignore_errors: true
-#   roles:
-#     - base
-#     - aads
+- hosts: sd36aads1
+  gather_facts: False
+  ignore_unreachable: true
+  ignore_errors: true
+  roles:
+    - base
+    - aads
 
 # - hosts: sd36cm1
 #   gather_facts: False
@@ -70,13 +70,13 @@
 #     - base
 #     - sbce
 
-- hosts: sd36aams2
-  gather_facts: False
-  ignore_unreachable: true
-  ignore_errors: true
-  roles:
-    - base
-    - aams
+# - hosts: sd36aams2
+#   gather_facts: False
+#   ignore_unreachable: true
+#   ignore_errors: true
+#   roles:
+#     - base
+#     - aams
 
 # - hosts: AES
 #   gather_facts: False

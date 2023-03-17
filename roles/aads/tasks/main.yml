@@ -81,7 +81,7 @@
   set_fact:
     backup: "{{ backup | default({}) | combine({ 'history': dict({ 'auto': aads_backup_history_output.stdout }) }) }}"
     cacheable: yes
-  when: aads_backup_history_output.stdout != ""
+  when: aads_backup_history_output is defined and aads_backup_history_output.stdout != ""
   tags:
   - backup
 
@@ -108,6 +108,7 @@
   with_items:
     - { name: "application", host: "{{ ansible_host }}", port: 443 , starttls: "" }
     - { name: "internal", host: "{{ ansible_host }}", port: 8458, starttls: "" }
+    - { name: "us", host: "{{ ansible_host }}", port: 8543, starttls: "" }
   register: get_certs_output
   tags:
   - certificates
