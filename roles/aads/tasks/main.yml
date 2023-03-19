@@ -6,7 +6,7 @@
   tags:
   - ssh_proxy
 
-- name: Obtaining `svc aads swversion` of {{ inventory_hostname }}
+- name: Obtaining `svc aads swversion` from {{ inventory_hostname }}
   shell: "/opt/Avaya/bin/sys/alias-wrappers/svc-wrapper.sh aads swversion"
   register: swversion_output
   tags:
@@ -19,7 +19,7 @@
   tags:
   - swversion
 
-- name: Obtaining `sysUpdate --status` of {{ inventory_hostname }}
+- name: Obtaining `sysUpdate --status` from {{ inventory_hostname }}
   shell: "sudo /opt/sys-update/sysUpdate.sh --status"
   register: sysUpdate_output
   timeout: 5
@@ -34,7 +34,7 @@
   tags:
   - swversion
 
-- name: Obtaining `av-version` of {{ inventory_hostname }}
+- name: Obtaining `av-version` from {{ inventory_hostname }}
   shell: "/opt/avaya/common-os/bin/av-version"
   register: av_version_output
   tags:
@@ -44,10 +44,11 @@
   set_fact:
     swversion: "{{ '\n'.join((swversion, av_version_output.stdout)) }}"
     cacheable: yes
+  when: av_version_output.stdout is defined
   tags:
   - swversion
 
-- name: Obtaining `EASGStatus` of {{ inventory_hostname }}
+- name: Obtaining `EASGStatus` from {{ inventory_hostname }}
   shell: "echo $(/usr/bin/EASGStatus)"
   register: EASGStatus_output
   tags:
@@ -60,7 +61,7 @@
   tags:
   - easg
 
-- name: Obtaining `svc aads status` of {{ inventory_hostname }}
+- name: Obtaining `svc aads status` from {{ inventory_hostname }}
   shell: "/opt/Avaya/bin/sys/alias-wrappers/svc-wrapper.sh aads status"
   register: svc_aads_status_output
   tags:
@@ -79,7 +80,7 @@
   tags:
   - backup
 
-- name: Updating 'backup_history' fact with 'auto' for {{ inventory_hostname }}
+- name: Setting 'backup' fact with 'auto' for {{ inventory_hostname }}
   set_fact:
     backup: "{{ backup | default({}) | combine({ 'history': dict({ 'auto': aads_auto_backup_history_output.stdout }) }) }}"
     cacheable: yes
@@ -93,7 +94,7 @@
   tags:
   - backup
 
-- name: Updating 'backup_history' fact with 'all' for {{ inventory_hostname }}
+- name: Updating 'backup' fact with 'all' for {{ inventory_hostname }}
   set_fact:
     backup: "{{ backup | default({}) | combine({ 'history': dict({ 'all': aads_all_backup_history_output.stdout }) }, recursive=True) }}"
     cacheable: yes
@@ -101,13 +102,13 @@
   tags:
   - backup
 
-- name: Obtaining US backup history of {{ inventory_hostname }}
+- name: Obtaining US backup history from {{ inventory_hostname }}
   shell: "grep 'Final Backup' /var/log/async_plugin_status.log | tail"
   register: us_backup_history_output
   tags:
   - backup
 
-- name: Updating 'backup_history' fact with 'us' for {{ inventory_hostname }}
+- name: Updating 'backup' fact with 'us' for {{ inventory_hostname }}
   set_fact:
     backup: "{{ backup | default({}) | combine({ 'history': dict({'us': us_backup_history_output.stdout }) },  recursive=True) }}"
     cacheable: yes
@@ -115,7 +116,7 @@
   tags:
   - backup
 
-- name: Obtaining certificates of {{ inventory_hostname }}
+- name: Obtaining certificates from {{ inventory_hostname }}
   get_certs:
     name: "{{ item.name }}"
     host: "{{ item.host }}"
