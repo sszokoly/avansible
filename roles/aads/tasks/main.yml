@@ -30,6 +30,7 @@
   set_fact:
     swversion: "{{ '\n'.join((swversion, sysUpdate_output.stdout)) }}"
     cacheable: yes
+  when: sysUpdate_output.stdout is defined
   tags:
   - swversion
 
@@ -72,17 +73,31 @@
   tags:
   - status
 
-- name: Obtaining AADS backup history of {{ inventory_hostname }}
+- name: Obtaining automatic backup history from {{ inventory_hostname }}
   shell: "ls -ltrd /var/log/Avaya/backup/* | tail"
-  register: aads_backup_history_output
+  register: aads_auto_backup_history_output
   tags:
   - backup
 
-- name: Updating 'backup_history' fact with AADS for {{ inventory_hostname }}
+- name: Updating 'backup_history' fact with 'auto' for {{ inventory_hostname }}
   set_fact:
-    backup: "{{ backup | default({}) | combine({ 'history': dict({ 'auto': aads_backup_history_output.stdout }) }) }}"
+    backup: "{{ backup | default({}) | combine({ 'history': dict({ 'auto': aads_auto_backup_history_output.stdout }) }) }}"
     cacheable: yes
-  when: aads_backup_history_output is defined and aads_backup_history_output.stdout != ""
+  when: aads_auto_backup_history_output is defined and aads_auto_backup_history_output.stdout != ""
+  tags:
+  - backup
+
+- name: Obtaining all backup history from {{ inventory_hostname }}
+  shell: ". /opt/Avaya/bin/sys/alias-wrappers/cdto-wrapper.sh logs; ls -tr AADS_utility* | xargs grep 'Backup:  Name:' | tail"
+  register: aads_all_backup_history_output
+  tags:
+  - backup
+
+- name: Updating 'backup_history' fact with 'all' for {{ inventory_hostname }}
+  set_fact:
+    backup: "{{ backup | default({}) | combine({ 'history': dict({ 'all': aads_all_backup_history_output.stdout }) }, recursive=True) }}"
+    cacheable: yes
+  when: aads_all_backup_history_output is defined and aads_all_backup_history_output.stdout != ""
   tags:
   - backup
 
@@ -92,7 +107,7 @@
   tags:
   - backup
 
-- name: Updating 'backup_history' fact with US for {{ inventory_hostname }}
+- name: Updating 'backup_history' fact with 'us' for {{ inventory_hostname }}
   set_fact:
     backup: "{{ backup | default({}) | combine({ 'history': dict({'us': us_backup_history_output.stdout }) },  recursive=True) }}"
     cacheable: yes
