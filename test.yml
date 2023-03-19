@@ -15,7 +15,7 @@
 #     - base
 #     - sm
 
-- hosts: sd36aads1
+- hosts: AADS
   gather_facts: False
   ignore_unreachable: true
   ignore_errors: true

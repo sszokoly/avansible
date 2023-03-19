@@ -22,6 +22,7 @@
 - name: Obtaining `sysUpdate --status` of {{ inventory_hostname }}
   shell: "sudo /opt/sys-update/sysUpdate.sh --status"
   register: sysUpdate_output
+  timeout: 5
   tags:
   - swversion
 
@@ -73,7 +74,7 @@
 
 - name: Obtaining AADS backup history of {{ inventory_hostname }}
   shell: "ls -ltrd /var/log/Avaya/backup/* | tail"
-  register: adds_backup_history_output
+  register: aads_backup_history_output
   tags:
   - backup
 
@@ -93,7 +94,7 @@
 
 - name: Updating 'backup_history' fact with US for {{ inventory_hostname }}
   set_fact:
-    backup: "{{ backup | default({}) | combine({ 'history': dict({'us': us_backup_history_output.stdout }) }) }}"
+    backup: "{{ backup | default({}) | combine({ 'history': dict({'us': us_backup_history_output.stdout }) },  recursive=True) }}"
     cacheable: yes
   when: us_backup_history_output.stdout != ""
   tags:
@@ -120,6 +121,7 @@
   with_indexed_items:
     - "application"
     - "internal"
+    - "us"
   tags:
   - certificates
 ...
