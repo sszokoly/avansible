@@ -123,7 +123,7 @@
     port: "{{ item.port }}"
     starttls: "{{ item.starttls }}"
   with_items:
-    - { name: "application", host: "{{ ansible_host }}", port: 443 , starttls: "" }
+    - { name: "application", host: "{{ ansible_host }}", port: 443, starttls: "" }
     - { name: "internal", host: "{{ ansible_host }}", port: 8458, starttls: "" }
     - { name: "us", host: "{{ ansible_host }}", port: 8543, starttls: "" }
   register: get_certs_output

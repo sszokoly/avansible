@@ -12,7 +12,7 @@
     cacheable: yes
   delegate_to: localhost
 
-- name: Obtaining `show system` from {{ inventory_hostname }}
+- name: Obtaining system info from {{ inventory_hostname }}
   avaya_bgw_raw:
     host: "{{ ansible_host }}"
     username: "{{ ansible_user }}"
