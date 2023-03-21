@@ -13,6 +13,8 @@
 
 - name: Obtaining `vmware -l` from {{ inventory_hostname }}
   shell: "/bin/vmware -l"
+  retries: 3
+  delay: 30
   register: vmware_level_output
   tags:
   - swversion
