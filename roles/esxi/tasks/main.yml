@@ -32,9 +32,9 @@
   tags:
   - swversion
 
-- name: Setting 'vmware_version' fact for {{ inventory_hostname }}
+- name: Setting 'swversion' fact for {{ inventory_hostname }}
   set_fact:
-    swversion: "{{ swversion + '\n' + vmware_version_output }}"
+    swversion: "{{ swversion + '\n' + vmware_version_output.stdout }}"
     cacheable: yes
   tags:
   - swversion
