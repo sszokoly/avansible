@@ -55,7 +55,7 @@
 #     - base
 #     - breeze
 
-- hosts: g450
+- hosts: labg430
   gather_facts: False
   ignore_unreachable: true
   ignore_errors: true

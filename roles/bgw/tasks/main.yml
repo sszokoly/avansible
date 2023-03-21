@@ -28,9 +28,12 @@
     - "show mm"
     - "show platform"
     - "show voip-dsp"
+    - "show gw-identity-cert h248reg"
+    - "show running-config"
   tags:
   - swversion
   - status
+  - certificates
 
 - name: Setting 'sysinfo' fact for {{ inventory_hostname }}
   set_fact:
