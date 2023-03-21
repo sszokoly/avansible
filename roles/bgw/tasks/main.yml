@@ -24,12 +24,12 @@
   with_items:
     - "show system"
     - "show mg list_config"
-    - "show faults"
     - "show mm"
     - "show platform"
     - "show voip-dsp"
-    - "show gw-identity-cert h248reg"
     - "show running-config"
+    - "show gw-identity-cert h248reg"
+    - "show faults"
   tags:
   - swversion
   - status
