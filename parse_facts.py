@@ -20,7 +20,7 @@ def main(facts_cache):
     for file in files:
         with open(os.path.join(facts_cache, file), 'r') as fd:
             facts = yaml.safe_load(fd)
-            print(facts.keys())
+            print(file, facts.keys())
 
 if __name__ == "__main__":
     facts_cache = sys.argv[1] if len(sys.argv) > 1 else FACTS_CACHE

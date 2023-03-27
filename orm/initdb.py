@@ -29,3 +29,16 @@ class Ansible_Child_Group(Base):
     )
 
 Base.metadata.create_all(bind=engine)
+
+Session = sessionmaker(bind=engine)
+session = Session()
+
+#parent1 = Ansible_Parent_Group(group_name="SMGR", descr="System Manager", vendor="Avaya")
+#parent2 = Ansible_Parent_Group(group_name="SM", descr="Session Manager", vendor="Avaya")
+child1 = Ansible_Child_Group(group_name="asm", descr="Core Session Manager", parent_group_name="SM")
+#child2 = Ansible_Child_Group(group_name="SM", descr="Session Manager", vendor="Avaya")
+
+#session.add(parent1)
+#session.add(parent2)
+session.add(child1)
+session.commit()
