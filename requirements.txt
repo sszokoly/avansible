@@ -1,6 +1,7 @@
 ansible
-cryptograph
+cryptography
 openpyxl
 paramiko
+PyYAML
 pwinput
 sqlalchemy

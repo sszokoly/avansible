@@ -13,5 +13,19 @@ class Ansible_Parent_Group(Base):
     descr = Column(String())
     vendor = Column(String())
 
+class Ansible_Child_Group(Base):
+    __tablename__ = 'ansible_child_group'
 
-Base.metadata.create_all()
+    group_name =  Column(String(), primary_key=True)
+    descr = Column(String())
+    parent_group_name = Column(
+        String(),
+        ForeignKey(
+            'ansible_parent_group.group_name', 
+            ondelete='CASCADE',
+            onupdate='CASCADE'
+        ),
+        nullable=True,
+    )
+
+Base.metadata.create_all(bind=engine)
