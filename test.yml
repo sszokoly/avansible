@@ -1,111 +1,119 @@
 ---
-- hosts: labg430
-  gather_facts: False
-  ignore_unreachable: true
-  ignore_errors: true
-  roles:
-    - bgw
+# - hosts: labg430
+#   gather_facts: False
+#   ignore_unreachable: true
+#   ignore_errors: true
+#   roles:
+#     - bgw
 
-- hosts: labavpu
-  gather_facts: False
-  ignore_unreachable: true
-  ignore_errors: true
-  roles:
-    - base 
-    - avpu
+# - hosts: labavpu
+#   gather_facts: False
+#   ignore_unreachable: true
+#   ignore_errors: true
+#   roles:
+#     - base 
+#     - avpu
 
-- hosts: sd36smgr1
+# - hosts: sd36smgr1
+#   gather_facts: False
+#   ignore_unreachable: true
+#   ignore_errors: true
+#   roles:
+#     - base
+#     - smgr
+
+# - hosts: sd36sm1
+#   gather_facts: False
+#   ignore_unreachable: true
+#   ignore_errors: true
+#   roles:
+#     - base
+#     - sm
+
+# - hosts: sd36aads1
+#   gather_facts: False
+#   ignore_unreachable: true
+#   ignore_errors: true
+#   roles:
+#     - base
+#     - aads
+
+# - hosts: sd36cm
+#   gather_facts: False
+#   ignore_unreachable: true
+#   ignore_errors: true
+#   roles:
+#     - base
+#     - cm
+
+# - hosts: BREEZE
+#   gather_facts: False
+#   ignore_unreachable: true
+#   ignore_errors: true
+#   roles:
+#     - base
+#     - breeze
+
+# - hosts: sd36sbcems
+#   gather_facts: False
+#   ignore_unreachable: true
+#   ignore_errors: true
+#   roles:
+#     - base
+#     - sbce
+
+# - hosts: sd36aams2
+#   gather_facts: False
+#   ignore_unreachable: true
+#   ignore_errors: true
+#   roles:
+#     - base
+#     - aams
+
+# - hosts: sd36aes1
+#   gather_facts: False
+#   ignore_unreachable: true
+#   ignore_errors: true
+#   roles:
+#     - base
+#     - aes
+
+# - hosts: slamon
+#   gather_facts: False
+#   ignore_unreachable: true
+#   ignore_errors: true
+#   roles:
+#     - base
+#     - ads
+
+# - hosts: sd36ad
+#   gather_facts: False
+#   ignore_unreachable: true
+#   ignore_errors: true
+#   roles:
+#     - win
+#     - ixm
+
+# - hosts: labavp
+#   gather_facts: False
+#   ignore_unreachable: true
+#   ignore_errors: true
+#   roles:
+#     - esxi  
+#     - avp
+
+# - hosts: esxi
+#   gather_facts: False
+#   ignore_unreachable: true
+#   ignore_errors: true
+#   roles:
+#     - esxi
+
+- hosts: amm
   gather_facts: False
   ignore_unreachable: true
   ignore_errors: true
   roles:
     - base
-    - smgr
-
-- hosts: sd36sm1
-  gather_facts: False
-  ignore_unreachable: true
-  ignore_errors: true
-  roles:
-    - base
-    - sm
-
-- hosts: sd36aads1
-  gather_facts: False
-  ignore_unreachable: true
-  ignore_errors: true
-  roles:
-    - base
-    - aads
-
-- hosts: sd36cm
-  gather_facts: False
-  ignore_unreachable: true
-  ignore_errors: true
-  roles:
-    - base
-    - cm
-
-- hosts: BREEZE
-  gather_facts: False
-  ignore_unreachable: true
-  ignore_errors: true
-  roles:
-    - base
-    - breeze
-
-- hosts: sd36sbcems
-  gather_facts: False
-  ignore_unreachable: true
-  ignore_errors: true
-  roles:
-    - base
-    - sbce
-
-- hosts: sd36aams2
-  gather_facts: False
-  ignore_unreachable: true
-  ignore_errors: true
-  roles:
-    - base
-    - aams
-
-- hosts: sd36aes1
-  gather_facts: False
-  ignore_unreachable: true
-  ignore_errors: true
-  roles:
-    - base
-    - aes
-
-- hosts: slamon
-  gather_facts: False
-  ignore_unreachable: true
-  ignore_errors: true
-  roles:
-    - base
-    - ads
-
-- hosts: sd36ad
-  gather_facts: False
-  ignore_unreachable: true
-  ignore_errors: true
-  roles:
-    - win
-    - ixm
-
-- hosts: labavp
-  gather_facts: False
-  ignore_unreachable: true
-  ignore_errors: true
-  roles:
-    - esxi  
-    - avp
-
-- hosts: esxi
-  gather_facts: False
-  ignore_unreachable: true
-  ignore_errors: true
-  roles:
-    - esxi
+    - amm
 ...
