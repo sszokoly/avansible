@@ -6,7 +6,7 @@
   tags:
   - ssh_proxy
 
-- name: Obtaining `swversion -h` from {{ inventory_hostname }}
+- name: Obtaining `swversion -s` from {{ inventory_hostname }}
   become: yes
   shell: "/opt/avaya/pmgr/current/Bin/swversion -s"
   register: swversion_output
@@ -33,13 +33,27 @@
   tags:
   - easg
 
-- name: Obtaining backup history from {{ inventory_hostname }}
-  shell: "ls -tr /var/avaya/log/iview/server.log* | xargs 'Uploaded file' | tail"
-  register: iview_backup_history_output
+- name: Obtaining backup config from {{ inventory_hostname }}
+  shell: "grep 'autoBackup' /opt/avaya/iview/tomcat/config/vcs-core.properties"
+  register: iview_backup_config_output
   tags:
   - backup
 
 - name: Setting 'backup' fact for {{ inventory_hostname }}
+  set_fact:
+    backup: "{{ backup | default({}) | combine({ 'config': iview_backup_config_output.stdout }) }}"
+    cacheable: yes
+  when: iview_backup_config_output is defined and iview_backup_config_output.stdout != ""
+  tags:
+  - backup
+
+- name: Obtaining backup history from {{ inventory_hostname }}
+  shell: "ls -tr /var/avaya/log/iview/server.log* | xargs grep 'Uploaded file' | tail -n1"
+  register: iview_backup_history_output
+  tags:
+  - backup
+
+- name: Updating 'backup' fact for {{ inventory_hostname }}
   set_fact:
     backup: "{{ backup | default({}) | combine({ 'history': iview_backup_history_output.stdout }) }}"
     cacheable: yes
