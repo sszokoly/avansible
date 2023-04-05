@@ -54,13 +54,13 @@
 #     - base
 #     - breeze
 
-# - hosts: sd36sbcems
-#   gather_facts: False
-#   ignore_unreachable: true
-#   ignore_errors: true
-#   roles:
-#     - base
-#     - sbce
+- hosts: sd36sbcems
+  gather_facts: False
+  ignore_unreachable: true
+  ignore_errors: true
+  roles:
+    - base
+    - sbce
 
 # - hosts: sd36aams2
 #   gather_facts: False
@@ -109,11 +109,11 @@
 #   roles:
 #     - esxi
 
-- hosts: amm
-  gather_facts: False
-  ignore_unreachable: true
-  ignore_errors: true
-  roles:
-    - base
-    - amm
+# - hosts: amm
+#   gather_facts: False
+#   ignore_unreachable: true
+#   ignore_errors: true
+#   roles:
+#     - base
+#     - amm
 ...
