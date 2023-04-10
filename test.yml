@@ -54,21 +54,21 @@
 #     - base
 #     - breeze
 
-- hosts: sd36sbcems
-  gather_facts: False
-  ignore_unreachable: true
-  ignore_errors: true
-  roles:
-    - base
-    - sbce
-
-# - hosts: sd36aams2
+# - hosts: sd36sbcems
 #   gather_facts: False
 #   ignore_unreachable: true
 #   ignore_errors: true
 #   roles:
 #     - base
-#     - aams
+#     - sbce
+
+- hosts: sd36aams2
+  gather_facts: False
+  ignore_unreachable: true
+  ignore_errors: true
+  roles:
+    - base
+    - aams
 
 # - hosts: sd36aes1
 #   gather_facts: False

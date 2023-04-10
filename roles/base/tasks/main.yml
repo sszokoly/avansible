@@ -19,10 +19,8 @@
 
 - name: Setting 'users' fact for {{ inventory_hostname }}
   set_fact:
-    users: "{{ users | default({}) | combine({item.key: item.value}) }}"
+    users: "{{ users | default({}) | combine({'ssh': dict({ ansible_user: chage_output.stdout}) }) }}"
     cacheable: yes
-  with_items:
-    - { key: "{{ ansible_user }}", value: "{{ chage_output.stdout }}" }
   tags:
   - users
 

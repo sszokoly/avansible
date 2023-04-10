@@ -149,7 +149,7 @@
 
 - name: Updating 'users' facts with Web 'admin' password set time for {{ inventory_hostname }}
   set_fact:
-    users: "{{ users | default({}) | combine({ 'admin': passwd_set_timestamp.stdout }) }}"
+    users: "{{ users | default({}) | combine({ 'web': dict({'admin': passwd_set_timestamp.stdout }) }, recursive=True) }}"
     cacheable: yes
   when: ansible_become_pass is defined
   tags:
