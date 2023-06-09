@@ -14,21 +14,21 @@
 #     - base 
 #     - avpu
 
-- hosts: smgr
-  gather_facts: False
-  ignore_unreachable: true
-  ignore_errors: true
-  roles:
-    - base
-    - smgr
+# - hosts: smgr
+#   gather_facts: False
+#   ignore_unreachable: true
+#   ignore_errors: true
+#   roles:
+#     - base
+#     - smgr
 
-- hosts: sm
-  gather_facts: False
-  ignore_unreachable: true
-  ignore_errors: true
-  roles:
-    - base
-    - sm
+# - hosts: asm
+#   gather_facts: False
+#   ignore_unreachable: true
+#   ignore_errors: true
+#   roles:
+#     - base
+#     - sm
 
 # - hosts: sd36aads1
 #   gather_facts: False
@@ -38,7 +38,7 @@
 #     - base
 #     - aads
 
-# - hosts: sd36cm
+# - hosts: sd36cm1
 #   gather_facts: False
 #   ignore_unreachable: true
 #   ignore_errors: true
@@ -46,7 +46,7 @@
 #     - base
 #     - cm
 
-# - hosts: BREEZE
+# - hosts: sd36brpmmmgmt
 #   gather_facts: False
 #   ignore_unreachable: true
 #   ignore_errors: true
@@ -78,7 +78,7 @@
 #     - base
 #     - aes
 
-# - hosts: slamon
+# - hosts: ADS
 #   gather_facts: False
 #   ignore_unreachable: true
 #   ignore_errors: true
@@ -99,8 +99,8 @@
 #   ignore_unreachable: true
 #   ignore_errors: true
 #   roles:
-#     - esxi  
-#     - avp
+#     - esxi
+#     - asp
 
 # - hosts: esxi
 #   gather_facts: False
@@ -109,11 +109,11 @@
 #   roles:
 #     - esxi
 
-# - hosts: amm
-#   gather_facts: False
-#   ignore_unreachable: true
-#   ignore_errors: true
-#   roles:
-#     - base
-#     - amm
+- hosts: amm
+  gather_facts: False
+  ignore_unreachable: true
+  ignore_errors: true
+  roles:
+    - base
+    - amm
 ...

@@ -7,6 +7,7 @@
   - ssh_proxy
 
 - name: Obtaining `ipcs-version` from {{ inventory_hostname }}
+  become: yes
   shell: "sudo /usr/local/ipcs/icu/scripts/ipcs-version"
   register: ipcs_version_output
   tags:

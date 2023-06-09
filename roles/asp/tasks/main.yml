@@ -1,0 +1,39 @@
+---
+- name: Setting ansible_ssh_common_args when ssh_proxy is defined
+  set_fact:
+    ansible_ssh_common_args: "{{ ssh_args }}"
+  when: ssh_proxy is defined
+  tags:
+  - ssh_proxy
+
+- name: Setting 'group_names' fact for {{ inventory_hostname }}
+  set_fact:
+    group_names: "{{ group_names }}"
+    cacheable: yes
+
+- name: Obtaining `swversion` from {{ inventory_hostname }}
+  shell: "cat /opt/avaya/etc/avaya-asp.version"
+  register: swversion_output
+  tags:
+  - swversion
+
+- name: Setting 'swversion' fact for {{ inventory_hostname }}
+  set_fact:
+    swversion: "{{ swversion_output.stdout }}"
+    cacheable: yes
+  tags:
+  - swversion
+
+- name: Obtaining `EASGStatus` from {{ inventory_hostname }}
+  shell: "echo $(/bin/EASGStatus)"
+  register: EASGStatus_output
+  tags:
+  - easg
+
+- name: Setting 'EASGStatus' fact for {{ inventory_hostname }}
+  set_fact:
+    EASGStatus: "{{ EASGStatus_output.stdout }}"
+    cacheable: yes
+  tags:
+  - easg
+...

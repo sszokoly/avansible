@@ -34,7 +34,7 @@
   - swversion
 
 - name: Obtaining `EASGStatus` from {{ inventory_hostname }}
-  shell: "/usr/bin/EASGStatus"
+  shell: "echo $(/usr/bin/EASGStatus)"
   register: EASGStatus_output
   tags:
   - easg
@@ -134,6 +134,7 @@
   set_fact:
     backup: "{{ backup | default({}) | combine({ 'config': webbackups }) }}"
     cacheable: yes
+  when: webbackups is defined
   tags:
   - backup
 

@@ -59,7 +59,7 @@
       AND alarm_status_code='Raised'
       ORDER BY receive_ts DESC
       LIMIT 10"
-  shell: "/bin/mgmtia avmgmt -P pager=off --csv -c {{ sql }}"
+  shell: "mgmtia avmgmt -P pager=off --csv -c {{ sql }}"
   when: ansible_become_pass is defined
   register: alarms_output
   tags:
@@ -83,7 +83,7 @@
       FROM log_store
       ORDER BY log_timestamp_num DESC
       LIMIT 10"
-  shell: "/bin/mgmtia avmgmt -P pager=off --csv -c {{ sql }}"
+  shell: "mgmtia avmgmt -P pager=off --csv -c {{ sql }}"
   when: ansible_become_pass is defined
   register: log_store_output
   tags:
@@ -113,7 +113,7 @@
       ON pem.job_name=sch.job_name
       ORDER BY pem.backup_update_datetime DESC
       LIMIT 1"
-  shell: "/bin/mgmtia avmgmt -P pager=off --csv -c {{ sql }}"
+  shell: "mgmtia avmgmt -P pager=off --csv -c {{ sql }}"
   when: ansible_become_pass is defined
   register: backup_config_output
   tags:
@@ -141,7 +141,7 @@
       ON pem.job_name=sch.job_name
       ORDER BY pem.backup_update_datetime DESC
       LIMIT 10"
-  shell: "/bin/mgmtia avmgmt -P pager=off --csv -c {{ sql }}"
+  shell: "mgmtia avmgmt -P pager=off --csv -c {{ sql }}"
   when: ansible_become_pass is defined
   register: backup_history_output
   tags:
@@ -167,7 +167,7 @@
       WHERE english_message_text LIKE 'Cassandra%'
       ORDER BY log_timestamp_num DESC
       LIMIT 10"
-  shell: "/bin/mgmtia avmgmt -P pager=off --csv -c {{ sql }}"
+  shell: "mgmtia avmgmt -P pager=off --csv -c {{ sql }}"
   when: ansible_become_pass is defined
   register: sm_backup_history_output
   tags:
@@ -195,7 +195,7 @@
       LEFT JOIN rts_applicationsystemtype AS type ON app.appsystemtypeid=type.id
       LEFT JOIN rts_devicetypes AS dev ON app.devicetypeid=dev.id
       ORDER BY type.name"
-  shell: "/bin/mgmtia avmgmt -P pager=off --csv -c {{ sql }}"
+  shell: "mgmtia avmgmt -P pager=off --csv -c {{ sql }}"
   when: ansible_become_pass is defined
   register: inventory_output
   tags:

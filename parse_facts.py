@@ -35,7 +35,10 @@ def main(facts_cache):
             group_names = facts.get('group_names', None)
             if not group_names:
                 continue
-            ansible_parent_group, ansible_child_group = group_names
+            print(group_names)
+            ansible_parent_group, *ansible_child_group = group_names
+            if len(ansible_child_group) > 1:
+                ansible_child_group = "+".join(ansible_child_group)
             certs = certificates(facts)
             if not certs:
                 print (ansible_parent_group, "", "") 

@@ -110,7 +110,7 @@
 
 - name: Obtaining certificates from {{ inventory_hostname }}
   vars:
-    secmodip_regex: "Local Security Module: ([^ \n]+)"
+    secmodip_regex: "Local Security Module:\s+([^ \n]+)"
     secmodip: "{{ smconfig_output.stdout | regex_search(secmodip_regex, '\\1') | first }}"
   get_certs:
     name: "{{ item.name }}"
