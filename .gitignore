@@ -141,3 +141,5 @@ hosts.yml
 lab_hosts.yml
 staging/
 ansible.cfg
+config
+artifacts/
