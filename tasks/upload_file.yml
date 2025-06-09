@@ -2,7 +2,7 @@
 # This playbook uploads files to the a target group / host(s), optionally through a staging host.
 # Extra Vars (--extra-vars):
 # - `src`: Path to the source file to be uploaded.
-# - `target`: Target host group or host from inventory where the file will be uploaded.
+# - `target`: Target group or host(s) from inventory where the file will be uploaded.
 # - `staging_host`: Optional staging host to upload the file before copying it to the target.
 # - `staging_folder`: Optional folder on the staging host where the file will be uploaded.
 # - `target_folder`: Optional folder on the target host(s) where the file will be copied.
