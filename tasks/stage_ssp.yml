@@ -1,8 +1,11 @@
 ---
+# This playbook stages a patch file to the staging host and then from there copies them to remote targets.
 -
   #### Setting up variables for file transfer ####
   hosts: localhost
-  gather_facts: False
+  gather_facts: false
+
+  vars:
 
   tasks:
     - name: "Getting '{{ src }}' info"
@@ -24,7 +27,7 @@
     - name: "Setting 'dest_host_folder' variable"
       ansible.builtin.set_fact:
         dest_host_folder: "{{ dest_host_folder | default('~/') }}"
-    
+
     - name: "Setting 'staging_host' variable"
       ansible.builtin.set_fact:
         staging_host: "{{ staging_host | default('localhost') }}"
@@ -47,7 +50,7 @@
       ansible.builtin.fail:
         msg: >-
           Bailing out, disk space in {{ staging_host }}:{{ staging_host_folder }} is insufficient
-          Required: {{ src_file_info.stat.size }} bytes, 
+          Required: {{ src_file_info.stat.size }} bytes,
           Available: {{ staging_host_folder_disk_space.stdout }} bytes
       delegate_to: "{{ staging_host }}"
       when:
@@ -59,6 +62,7 @@
         src: "{{ src }}"
         dest: "{{ staging_host_folder }}"
         mode: '0644'
+        force: false
       register: result
       delegate_to: "{{ staging_host }}"
 
@@ -67,10 +71,10 @@
         msg: "Bailing out, copying '{{ src }}' to '{{ staging_host }}:{{ staging_host_folder }}' has failed"
       when: result.failed
 -
-  #### Copying patch to LSPs ####
-  hosts: CM
-  serial: 1
-  gather_facts: False
+  #### Copying patch to target hosts ####
+  hosts: cm_lsp
+  serial: 3
+  gather_facts: false
   ignore_unreachable: true
 
   # vars: variables that will apply to the play
@@ -89,7 +93,7 @@
       ansible.builtin.stat:
         path: "{{ dest_host_folder }}"
       register: dest_host_folder_info
-      
+
     - name: "FAIL if '{{ dest_host_folder }}' does NOT exist"
       ansible.builtin.fail:
         msg: "Bailing out, folder '{{ inventory_hostname }}:{{ dest_host_folder }}' does NOT exist"
@@ -101,9 +105,8 @@
         checksum_algorithm: md5
       register: target_dest_file_name_info
 
-    - name: "Block that only runs if '{{ dest_host_folder }}/{{ src_file_name }}' does NOT exist"
+    - name: "BLOCK when {{ dest_host_folder }}/{{ src_file_name }}' does NOT exist on target"
       block:
-        
         - name: "Getting available disk space in {{ dest_host_folder }}"
           ansible.builtin.shell: df -B1 {{ dest_host_folder }} | awk 'NR==2 {print $4}'
           register: dest_host_folder_disk_space
@@ -124,7 +127,7 @@
             user: "{{ hostvars[inventory_hostname]['ansible_user'] }}"
             password: "{{ hostvars[inventory_hostname]['ansible_ssh_pass'] }}"
           delegate_to: "{{ staging_host }}"
-      
+
       when: not target_dest_file_name_info.stat.exists or target_dest_file_name_info.stat.checksum != src_file_info.stat.checksum
 
     - name: "Getting '{{ dest_host_folder }}/{{ src_file_name }}' info"
@@ -133,39 +136,39 @@
         checksum_algorithm: md5
       register: target_dest_file_name_info_after
 
-    - name: "Adding host to 'successful_copies' group if copy was successful"
-      ansible.builtin.add_host:
-        name: "{{ inventory_hostname }}"
-        groups: successful_copies
-      delegate_facts: true
+    - name: "Append host to 'stage_ssp_successful_hosts.txt'"
+      delegate_to: localhost
+      shell: |
+        echo "{{ inventory_hostname }}" >> stage_ssp_successful_hosts.txt
       when:
         - target_dest_file_name_info_after.stat.exists
         - target_dest_file_name_info_after.stat.checksum == src_file_info.stat.checksum
 
-    - name: "Adding host to 'failed_copies' group if if copy was NOT successful"
-      ansible.builtin.add_host:
-        name: "{{ inventory_hostname }}"
-        groups: failed_copies
+    - name: "Append host to 'stage_ssp_failed_hosts.txt'"
+      ansible.builtin.shell: |
+        echo "{{ inventory_hostname }}" >> stage_ssp_failed_hosts.txt
+      delegate_to: localhost
       delegate_facts: true
       when:
         - not target_dest_file_name_info_after.stat.exists or target_dest_file_name_info_after.stat.checksum != src_file_info.stat.checksum
--
-  #### Post copy tasks ####
-  hosts: localhost
-  gather_facts: False
 
-  tasks:
-    - name: "Setting 'target_ssp_number' variable from '{{ src_file_name }}'"
-      ansible.builtin.set_fact:
-        target_ssp_number: "{{ src_file_name | regex_search('SSP-(\\d+)', '\\1') | first }}"
+# -
+#   #### Post copy tasks ####
+#   hosts: localhost
+#   gather_facts: False
 
-    - name: "Hosts in 'successful_copies' group"
-      ansible.builtin.debug:
-        msg: "{{ groups['successful_copies'] | default([]) }}"
-      run_once: true
+#   tasks:
+#     - name: "Setting 'target_ssp_number' variable from '{{ src_file_name }}'"
+#       ansible.builtin.set_fact:
+#         target_ssp_number: "{{ src_file_name | regex_search('SSP-(\\d+)', '\\1') | first }}"
 
-    - name: "Hosts in 'failed_copies' group"
-      ansible.builtin.debug:
-        msg: "{{ groups['failed_copies'] | default([]) }}"
-      run_once: true
+#     - name: "Hosts in 'successful_hosts' group"
+#       ansible.builtin.debug:
+#         msg: "{{ hostvars['localhost'].successful_hosts | default([]) }}"
+#       run_once: true
+
+#     - name: "Hosts in 'failed_hosts' group"
+#       ansible.builtin.debug:
+#         msg: "{{ hostvars['localhost'].failed_hosts | default([]) }}"
+#       run_once: true
 ...

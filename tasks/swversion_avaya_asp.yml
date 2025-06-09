@@ -1,0 +1,54 @@
+---
+- name: Setting ansible_ssh_common_args when ssh_proxy is defined
+  set_fact:
+    ansible_ssh_common_args: "{{ ssh_args }}"
+  when: ssh_proxy is defined
+
+- name: Obtaining ASP `swversion` output
+  vars:
+    cmd: "more /opt/avaya/etc/avaya-asp.version"
+  shell: "{{ cmd }}"
+  timeout: "{{ timeout }}"
+  register: result
+  tags:
+    - ASP
+
+- name: Extracting AVP Release
+  vars:
+    appsp_regex: "Release ([^ \n]+)"
+    appsp_res: "{{ result.stdout | regex_search(appsp_regex, '\\1') }}"
+  set_fact:
+    appsp: "{{ appsp_res | first }}"
+  when: (appsp_res | length >= 1) and (result is defined)
+  delegate_to: localhost
+  tags:
+    - ASP
+
+- name: Writting ASP latest versions to '{{ swversion_stdout }}'
+  lineinfile:
+    line: "AVAYA SOLUTIONS PLATFORM,Latest,ASP,,{{ latest_avp_appsp | default('') }},,,"
+    insertafter: EOF
+    dest: "{{ swversion_stdout }}"
+  delegate_to: localhost
+  tags:
+    - ASP
+
+- name: Writting ASP extracted versions to '{{ swversion_stdout }}'
+  vars:
+    pgrp: "{{ group_names | first | default('') }}"
+    cgrp: "{{ group_names | last | default('') }}"
+    syssp: ""
+    ssp: ""
+    ksp: ""
+  lineinfile:
+    line: "{{ inventory_hostname }},{{ ansible_host }},{{ pgrp }},{{ cgrp }},{{ appsp }},{{ syssp }},{{ ssp }},{{ ksp }}"
+    insertafter: EOF
+    dest: "{{ swversion_stdout }}"
+  delegate_to: localhost
+  tags:
+    - ASP
+
+- name: Resetting SSH connection
+  ansible.builtin.meta: reset_connection
+  when: ssh_proxy is defined
+...

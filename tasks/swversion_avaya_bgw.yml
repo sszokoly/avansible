@@ -1,0 +1,67 @@
+---
+- name: Setting ansible_ssh_common_args when ssh_proxy is defined
+  set_fact:
+    ansible_ssh_common_args: "{{ ssh_args }}"
+  when: ssh_proxy is defined
+
+- name: Obtaining BGW `show system` output
+  avaya_bgw_raw:
+    host: "{{ ansible_host }}"
+    username: "{{ ansible_user }}"
+    password: "{{ ansible_ssh_pass }}"
+    cmd: "show system"
+  register: result
+  delegate_to: localhost
+  no_log: true
+  tags:
+    - BGW
+
+- name: Extracting BGW FW Vintage
+  vars:
+    appsp_regex: ".*FW Vintage.*: ([^ \n]+)"
+    appsp_res: "{{ result.stdout | regex_search(appsp_regex, '\\1') }}"
+  set_fact:
+    appsp: "{{ appsp_res | first }}"
+  when: (appsp_res | length >= 1) and (result is defined)
+  delegate_to: localhost
+  tags:
+    - BGW
+
+- name: Extracting BGW HW Vintage
+  vars:
+    syssp_regex: ".*HW Vintage.*: ([^ \n]+)"
+    syssp_res: "{{ result.stdout | regex_search(syssp_regex, '\\1') }}"
+  set_fact:
+    syssp: "{{ syssp_res | first }}"
+  when: (syssp_res | length >= 1) and (result is defined)
+  delegate_to: localhost
+  tags:
+    - BGW
+
+- name: Writting BGW latest versions to '{{ swversion_stdout }}'
+  lineinfile:
+    line: "AVAYA BRANCH GATEWAY,Latest,BGW,,{{ latest_bgw_appsp | default('') }},,,"
+    insertafter: EOF
+    dest: "{{ swversion_stdout }}"
+  delegate_to: localhost
+  tags:
+    - BGW
+
+- name: Writting BGW extracted versions to '{{ swversion_stdout }}'
+  vars:
+    pgrp: "{{ group_names | first | default('') }}"
+    cgrp: "{{ group_names | last | default('') }}"
+    ssp: ""
+    ksp: ""
+  lineinfile:
+    line: "{{ inventory_hostname }},{{ ansible_host }},{{ pgrp }},{{ cgrp }},{{ appsp | default(default) }},{{ syssp | default(default) }},{{ ssp }},{{ ksp }}"
+    insertafter: EOF
+    dest: "{{ swversion_stdout }}"
+  delegate_to: localhost
+  tags:
+    - BGW
+
+- name: Resetting SSH connection
+  ansible.builtin.meta: reset_connection
+  when: ssh_proxy is defined
+...

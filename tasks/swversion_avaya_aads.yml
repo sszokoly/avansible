@@ -1,0 +1,73 @@
+---
+- name: Setting ansible_ssh_common_args when ssh_proxy is defined
+  set_fact:
+    ansible_ssh_common_args: "{{ ssh_args }}"
+  when: ssh_proxy is defined
+
+- name: Obtaining AADS `svc aads swversion` output
+  vars:
+    cmd: "/opt/Avaya/bin/sys/alias-wrappers/svc-wrapper.sh aads swversion"
+  shell: "{{ cmd }}"
+  timeout: "{{ timeout }}"
+  register: result
+  tags:
+    - AADS
+
+- name: Extracting AADS DeviceServices versiob
+  vars:
+    appsp_regex: "DeviceServices:([^ \n]+)"
+    appsp_res: "{{ result.stdout | regex_search(appsp_regex, '\\1') }}"
+  set_fact:
+    appsp: "{{ appsp_res | first }}"
+  when: (appsp_res | length >= 1) and (result is defined)
+  delegate_to: localhost
+  tags:
+    - AADS
+
+- name: Obtaining AADS `sys versions` output
+  vars:
+    cmd: "/opt/Avaya/bin/sys/alias-wrappers/sys-wrapper.sh versions"
+  shell: "{{ cmd }}"
+  timeout: "{{ timeout }}"
+  register: sys_result
+  tags:
+    - AADS
+
+- name: Extracting AADS System layer version
+  vars:
+    syssp_regex: "System layer version : ([^ \n]+)"
+    syssp_res: "{{ sys_result.stdout | regex_search(syssp_regex, '\\1') }}"
+  set_fact:
+    syssp: "{{ syssp_res | first }}"
+  when: (syssp_res | length >= 1) and (sys_result is defined)
+  delegate_to: localhost
+  tags:
+    - AADS
+
+- name: Writting AADS latest versions to '{{ swversion_stdout }}'
+  lineinfile:
+    line: "AVAYA AURA DEVICE SERVICES,Latest,AADS,,{{ latest_aads_appsp | default('') }},{{ latest_aads_syssp | default('') }},,"
+    insertafter: EOF
+    dest: "{{ swversion_stdout }}"
+  delegate_to: localhost
+  tags:
+    - AADS
+
+- name: Writting AADS extracted versions to '{{ swversion_stdout }}'
+  vars:
+    pgrp: "{{ group_names | first | default('') }}"
+    cgrp: "{{ group_names | last | default('') }}"
+    ssp: ""
+    ksp: ""
+  lineinfile:
+    line: "{{ inventory_hostname }},{{ ansible_host }},{{ pgrp }},{{ cgrp }},{{ appsp }},{{ syssp }},{{ ssp }},{{ ksp }}"
+    insertafter: EOF
+    dest: "{{ swversion_stdout }}"
+  delegate_to: localhost
+  tags:
+    - AADS
+
+- name: Resetting SSH connection
+  ansible.builtin.meta: reset_connection
+  when: ssh_proxy is defined
+...
