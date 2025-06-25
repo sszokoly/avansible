@@ -14,7 +14,7 @@ def run_expect_scp(module, src, dest, user, host, password, port):
         script_path = f.name
         f.write(f"""#!/usr/bin/expect -f
 set timeout 3
-spawn scp -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -P {port} {src} {user}@{host}:{dest}
+spawn scp -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o ConnectTimeout=60 -P {port} {src} {user}@{host}:{dest}
 expect {{
     "assword:" {{
         send "{password}\\r"

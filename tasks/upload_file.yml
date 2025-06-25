@@ -6,136 +6,158 @@
 # - `staging_host`: Optional staging host to upload the file before copying it to the target.
 # - `staging_folder`: Optional folder on the staging host where the file will be uploaded.
 # - `target_folder`: Optional folder on the target host(s) where the file will be copied.
-# - `serial`: Optional number of tasks to run at the same time (default is 3).
-# - `successful_hosts`: Optional filename to write hosts to where the file upload was successful (default is successful_hosts_upload_file_<src_basename>).
-# - `failed_hosts`: Optional filename to write hosts to where the file upload failed (default is failed_hosts_upload_file_<src_basename>).
+# - `throttle`: Optional number of tasks to run at the same time (default is 3).
+# - `outfile`: Optional filename to write result of uploads per host (default is result_upload_file_<src_basename>_<datetime in iso8601>.out).
 # Note: The playbook assumes the `scp_expect` module is available for copying files from staging host to target host(s).
 
 # Example usage:
 # ansible-playbook upload_file.yml --extra-vars "\
-#   src=/path/to/file.txt \
-#   target=target_group \
-#   staging_host=staging_host \
-#   staging_folder=/path/to/staging_folder \
-#   target_folder=/path/to/target_folder \
-#   serial=3 \
-#   successful_hosts=successful_hosts_file.txt \
-#   failed_hosts=failed_hosts_file.txt"
+#   src=</path/to/file> \
+#   target=<target group> \
+#   staging_host=<staging host> \
+#   staging_folder=<path/to/staging_folder> \
+#   target_folder=</path/to/target_folder> \
+#   throttle=3 \
+#   outfile=result_uploads.txt"
 #
 # SPDX-License-Identifier: GPL-3.0-or-later
 
 -
-  #### Setting up variables and uploading file to target host group / host or staging host####
+  #### Setting up variables and uploading file to staging host####
   hosts: localhost
   gather_facts: false
-
-  vars:
+  gather_subset: min
 
   tasks:
-    - name: "Check if 'src' argument is in --extra-vars"
-      ansible.builtin.fail:
-        msg: "'src' argument is missing from --extra-vars"
+    - name: "Fail if 'src' file argument is not in --extra-vars"
       when: src is not defined
-
-    - name: "Check if 'target' argument is in --extra-vars"
       ansible.builtin.fail:
-        msg: "'target' argument is missing from --extra-vars"
-      when: target is not defined
+        msg: "'src' file argument is not in --extra-vars"
 
-    - name: "Get 'src' file status"
+    - name: "Fail if 'target' host/group argument is not in --extra-vars"
+      when: target is not defined
+      ansible.builtin.fail:
+        msg: "'target' host/group argument is not in --extra-vars"
+
+    - name: "Get file status for '{{ src }}'"
       ansible.builtin.stat:
         path: "{{ src }}"
         checksum_algorithm: md5
       register: src_info
 
-    - name: "Check if '{{ src }}' exists"
+    - name: "Fail if '{{ src }}' does not exist"
+      when: not src_info.stat.exists
       ansible.builtin.fail:
         msg: "'{{ src }}' does not exist"
-      when: not src_info.stat.exists
 
-    - name: "Check if 'target' is in inventory"
-      ansible.builtin.fail:
-        msg: "'{{ target }}' is not a valid host or group in the inventory"
+    - name: "Fail if '{{ target }}' is not a valid host/group in the inventory"
       when: target not in groups and target not in groups['all']
+      ansible.builtin.fail:
+        msg: "'{{ target }}' is not a valid host/group in the inventory"
 
     - name: "Set 'src_dirname' and 'src_basename' variables from '{{ src }}'"
       ansible.builtin.set_fact:
         src_dirname: "{{ src | dirname }}"
         src_basename: "{{ src | basename }}"
 
-    - name: "Set 'target_folder' variable, default to '~'"
-      ansible.builtin.set_fact:
-        target_folder: "{{ target_folder | default('~') }}"
-
-    - name: "Check if 'staging_host' is in the inventory"
+    - name: "Fail if '{{ staging_host }}' is not a valid host in the inventory"
+      when: staging_host is defined and staging_host not in groups['all']
       ansible.builtin.fail:
         msg: "'{{ staging_host }}' is not a valid host in the inventory"
-      when: staging_host is defined and staging_host not in groups['all']
 
-    - name: "Set 'staging_host' variable, default to 'localhost'"
+    - name: "Set 'staging_host' variable, defaults to 'localhost'"
       ansible.builtin.set_fact:
         staging_host: "{{ staging_host | default('localhost') }}"
 
-    - name: "Set 'staging_folder' variable"
+    - name: "Set 'staging_folder' variable, defaults to '~' or specific path based on staging host type"
       ansible.builtin.set_fact:
         staging_folder: "{{
             staging_folder if staging_folder is defined else
             src_dirname if staging_host == 'localhost' else
-            '/swlibrary/staging/sync' if staging_host in groups['SMGR'] else
+            '/swlibrary' if staging_host in groups['SMGR'] else
             '/var/home/ftp/pub' if staging_host in groups['CM'] else
             '~'
           }}"
 
-    - block:
-        - name: "Get '{{ staging_host }}:{{ staging_folder }}' file status"
+    - name: "Set 'target_folder' variable, defaults to '~'"
+      ansible.builtin.set_fact:
+        target_folder: "{{ target_folder | default('~') }}"
+
+    - name: "Get timestamp from system"
+      ansible.builtin.shell: "date +%Y%m%d_%H%M%S"
+      register: timestamp
+
+    - name: "Set 'outfile' variable"
+      ansible.builtin.set_fact:
+        outfile: "{{ outfile | default('result_upload_file__' + src_basename + '__' + timestamp.stdout + '.out') }}"
+
+    - name: "Run 'transfer_with_scp' when 'staging_host' is not 'localhost'"
+      when: staging_host != 'localhost'
+      block:
+        - name: "Get folder status for '{{ staging_folder }}'"
           ansible.builtin.stat:
             path: "{{ staging_folder }}"
           register: staging_folder_info
           delegate_to: "{{ staging_host }}"
+          delegate_facts: true
 
-        - name: "Check if '{{ staging_host }}:{{ staging_folder }}' exists"
-          ansible.builtin.fail:
-            msg: "'{{ staging_host }}:{{ staging_folder }}' does not exist"
+        - name: "Fail if '{{ staging_folder }}' does not exist"
           when: not staging_folder_info.stat.exists
+          ansible.builtin.fail:
+            msg: "'{{ staging_host }}:{{ staging_folder}}' does not exist"
 
-        - name: "Get available disk space on '{{ staging_host }}:{{ staging_folder }}'"
+        - name: "Get available disk space on '{{ staging_folder }}'"
           become: true
-          ansible.builtin.shell: df -B1 {{ staging_folder }} | awk 'NR==2 {print $4}'
+          ansible.builtin.shell: df {{ staging_folder }} | awk 'NR==2 {print $4}'
           register: staging_folder_disk_space
+          delegate_to: "{{ staging_host }}"
+          delegate_facts: true
 
-        - name: "Check if disk space on '{{ staging_host }}:{{ staging_folder }}' is sufficient"
+        - name: "Fail if disk space on '{{ staging_folder }}' is insufficient"
+          when: (staging_folder_disk_space.stdout | int * 1024) < src_info.stat.size
           ansible.builtin.fail:
             msg: >-
               Disk space on {{ staging_host }}:{{ staging_folder }} is insufficient
               Required: {{ (src_info.stat.size | int / 1048576) | int }} MB,
-              Available: {{ (staging_folder_disk_space.stdout | int / 1048576) | int }} MB
-          when: (staging_folder_disk_space.stdout | int) < src_info.stat.size
+              Available: {{ (staging_folder_disk_space.stdout | int * 1024 / 1048576) | int }} MB
 
-        - name: "Copy '{{ src }}' to '{{ staging_host }}:{{ staging_folder }}'"
-          ansible.builtin.copy:
+        - name: "Set 'src_basename' variable from '{{ src }}'"
+          ansible.builtin.set_fact:
+            src_basename: "{{ src | basename }}"
+
+        - name: "Get file status for '{{ staging_host }}:{{ staging_folder }}/{{ src_basename }}'"
+          ansible.builtin.stat:
+            path: "{{ staging_folder }}/{{ src_basename }}"
+            checksum_algorithm: md5
+          register: staging_file_info
+          delegate_to: "{{ staging_host }}"
+          delegate_facts: true
+
+        - name: "SCP '{{ src }}' to '{{ staging_host }}:{{ staging_folder }}'"
+          when: not staging_file_info.stat.exists or
+                (staging_file_info.stat.checksum != src_info.stat.checksum)
+          scp_expect:
             src: "{{ src }}"
             dest: "{{ staging_folder }}"
-            mode: '0644'
-            force: false
+            host: "{{ hostvars[staging_host]['ansible_host'] }}"
+            user: "{{ hostvars[staging_host]['ansible_user'] }}"
+            password: "{{ hostvars[staging_host]['ansible_ssh_pass'] }}"
           register: result
 
-        - name: "Check if copying '{{ src }}' to '{{ staging_host }}:{{ staging_folder }}' was successful"
+        - name: "Fail if copying '{{ src }}' to '{{ staging_host }}:{{ staging_folder }}' failed"
+          when:
+            - not result.skipped | default(false)
+            - result is defined
+            - result.failed
           ansible.builtin.fail:
-            msg: "Copying '{{ src }}' to '{{ staging_host }}:{{ staging_folder }}' failed"
-          when: result.failed
-
-      delegate_to: "{{ staging_host }}"
-      when: staging_host != 'localhost'
+            msg: "Copying '{{ src }}' to '{{ target }}:{{ target_folder }}' failed"
 -
   #### Copying 'src' file to target host(s) optionally through staging host ####
   hosts: "{{ target }}"
-  serial: "{{ 3 if serial is not defined else serial }}"
-  gather_facts: true
-  ignore_unreachable: false
+  throttle: "{{ 3 if throttle is not defined else throttle }}"
+  gather_facts: false
 
-  vars:
-
-  tasks:
+  pre_tasks:
     - name: "Import variables from hostvars"
       ansible.builtin.set_fact:
         src_basename: "{{ hostvars['localhost']['src_basename'] }}"
@@ -143,78 +165,118 @@
         staging_host: "{{ hostvars['localhost']['staging_host'] }}"
         staging_folder: "{{ hostvars['localhost']['staging_folder'] }}"
         target_folder: "{{ hostvars['localhost']['target_folder'] }}"
+        outfile: "{{ hostvars['localhost']['outfile'] }}"
 
-    - name: "Set 'successful_hosts' and 'failed_hosts' filename variables"
+    - name: "Check if host is reachable"
+      ansible.builtin.ping:
+      ignore_unreachable: true
+      register: ping_result
+      delegate_to: "{{ inventory_hostname }}"
+      failed_when: false
+
+    - name: Handle unreachable host
+      when: ping_result.unreachable is defined and ping_result.unreachable
+      block:
+        - name: Mark host as unreachable in report
+          ansible.builtin.shell: |
+            echo '{{ inventory_hostname }},1,"unreachable"' >> {{ outfile }}
+          delegate_to: localhost
+        - meta: end_host
+
+  tasks:
+    - name: "Collect min facts"
+      ansible.builtin.setup:
+        gather_subset: min
+
+    - name: "Import variables from hostvars"
+      when: staging_host != 'localhost'
       ansible.builtin.set_fact:
-        successful_hosts: "{{ successful_hosts | default('successful_hosts_' + src_basename + '.txt') }}"
-        failed_hosts: "{{ failed_hosts | default('failed_hosts_' + src_basename + '.txt') }}"
-        target_folder: "{{ target_folder if target_folder != '~' else ansible_user_dir }}"
-        delegate_fact: true
+        src: "{{ staging_folder }}/{{ src_basename }}"
 
-    - block:
-        - name: "Get {{ target_folder }} folder status"
-          ansible.builtin.stat:
-            path: "{{ target_folder }}"
-          register: target_folder_info
+    - name: "Expand '~'"
+      when: target_folder == '~'
+      block:
+        - name: "Set target_folder to ansible_user_dir if target_folder is '~' and host is not ESXI"
+          when: inventory_hostname not in groups['ESXI']
+          ansible.builtin.set_fact:
+            target_folder: "{{ ansible_user_dir }}"
 
-        - name: "Check if '{{ target_folder }}' exists"
-          ansible.builtin.fail:
-            msg: "'{{ inventory_hostname }}:{{ target_folder }}' does not exist"
-          when: not target_folder_info.stat.exists
+        - name: "Set target_folder to ansible_user_dir if target_folder is '~' and host is ESXI"
+          when: inventory_hostname in groups['ESXI']
+          block:
+            - name: "Get first VM ID"
+              ansible.builtin.shell: vim-cmd vmsvc/getallvms | awk 'NR==2 {print $1}'
+              register: first_vmid
 
-        - name: "Get available disk space on {{ target_folder }}"
-          ansible.builtin.shell: df -B1 {{ target_folder }} | awk 'NR==2 {print $4}'
+            - name: "Get URL of vmid datastore"
+              ansible.builtin.shell: vim-cmd vmsvc/get.datastores {{ first_vmid.stdout | trim }} | grep '^url' | awk '{print $2}'
+              register: datastore_url
+              when: first_vmid.stdout | length > 0
+
+            - name: "Set target_folder to datastore URL"
+              ansible.builtin.set_fact:
+                datastore: "{{ datastore_url.stdout | trim }}"
+              when: datastore_url.stdout | length > 0
+
+            - name: "Set target_folder to datastore URL"
+              ansible.builtin.set_fact:
+                target_folder: "{{ datastore | default('/vmfs/volumes/datastore1') }}"
+
+    - name: "Outer block with rescue"
+      block:
+        - name: "Get available disk space on '{{ target_folder }}'"
+          become: true
+          ansible.builtin.shell: df {{ target_folder }} | awk 'NR==2 {print $4}'
           register: target_folder_disk_space
 
-        - name: "Check if {{ target_folder }}' disk space is sufficient"
+        - name: "Fail if disk space on '{{ target_folder }}' is insufficient"
+          when: (target_folder_disk_space.stdout | int * 1024) < src_info.stat.size
           ansible.builtin.fail:
             msg: >-
-              "Disk space on {{ inventory_hostname }}:{{ target_folder }} is insufficient
+              Disk space on {{ staging_host }}:{{ staging_folder }} is insufficient
               Required: {{ (src_info.stat.size | int / 1048576) | int }} MB,
-              Available: {{ (target_folder_disk_space.stdout | int / 1048576) | int }} MB
-          when: (target_folder_disk_space.stdout | int) < src_info.stat.size
+              Available: {{ (staging_folder_disk_space.stdout | int * 1024 / 1048576) | int }} MB
 
-        - name: "Get '{{ target_folder }}/{{ src_basename }}' file status before copying"
+        - name: "Get file status for {{ src_basename }}'"
           ansible.builtin.stat:
             path: "{{ target_folder }}/{{ src_basename }}"
             checksum_algorithm: md5
-          register: target_info_before
+          register: target_file_info
 
-        - block:
-            - name: "Copy '{{ staging_host }}:{{ staging_folder }}/{{ src_basename }}' to '{{ target_folder }}'"
-              scp_expect:
-                src: "{{ staging_folder }}/{{ src_basename }}"
-                dest: "{{ target_folder }}/{{ src_basename }}"
-                host: "{{ hostvars[inventory_hostname]['ansible_host'] }}"
-                user: "{{ hostvars[inventory_hostname]['ansible_user'] }}"
-                password: "{{ hostvars[inventory_hostname]['ansible_ssh_pass'] }}"
-              delegate_to: "{{ staging_host }}"
+        - name: "SCP '{{ src_basename }}' to 'target'"
+          when: not target_file_info.stat.exists or
+                (target_file_info.stat.checksum != src_info.stat.checksum)
+          scp_expect:
+            src: "{{ staging_folder }}/{{ src_basename }}"
+            dest: "{{ target_folder }}"
+            host: "{{ hostvars[inventory_hostname]['ansible_host'] }}"
+            user: "{{ hostvars[inventory_hostname]['ansible_user'] }}"
+            password: "{{ hostvars[inventory_hostname]['ansible_ssh_pass'] }}"
+          delegate_to: "{{ staging_host }}"
+          register: result
 
-            - name: "Get '{{ target_folder }}/{{ src_basename }}' file status after copying"
-              ansible.builtin.stat:
-                path: "{{ target_folder }}/{{ src_basename }}"
-                checksum_algorithm: md5
-              register: target_info_after
+        - name: "Get file status for {{ src_basename }}'"
+          ansible.builtin.stat:
+            path: "{{ target_folder }}/{{ src_basename }}"
+            checksum_algorithm: md5
+          register: target_file_info
 
-            - name: "Check if '{{ target_folder }}/{{ src_basename }}' checksum is good"
-              ansible.builtin.fail:
-                msg: >-
-                  "Checksum mismatch for '{{ target_folder }}/{{ src_basename }}',
-                  Expected: {{ src_info.stat.checksum }},
-                  Got: {{ target_info_after.stat.checksum }}"
-              when: target_info_after.stat.exists and target_info_after.stat.checksum != src_info.stat.checksum
+        - name: "Fail if copying '{{ src_basename }}' to '{{ target_folder }}' failed"
+          when:
+            - not result.skipped | default(false)
+            - result is defined
+            - result.failed or target_file_info.stat.checksum != src_info.stat.checksum
+          ansible.builtin.fail:
+            msg: "Copying '{{ src }}' to '{{ target }}:{{ target_folder }}' failed"
 
-            - name: "Append host to '{{ successful_hosts }}'"
-              ansible.builtin.shell: |
-                echo "{{ inventory_hostname }}" >> {{ successful_hosts }}
-              delegate_to: localhost
-              when: target_info_after.stat.exists and target_info_after.stat.checksum == src_info.stat.checksum
-
-          when: not target_info_before.stat.exists or target_info_before.stat.checksum != src_info.stat.checksum
+        - name: "Append host to '{{ outfile }}' with success"
+          ansible.builtin.shell: |
+            echo '{{ inventory_hostname }},0,' >> {{ outfile }}
+          delegate_to: localhost
 
       rescue:
-        - name: "Append host to '{{ failed_hosts }}'"
+        - name: "Append host to '{{ outfile }}' with failure"
           ansible.builtin.shell: |
-            echo "{{ inventory_hostname }}" >> {{ failed_hosts }}
+            echo '{{ inventory_hostname }},1,"{{ ansible_failed_result.msg[:100] }}"' >> {{ outfile }}
           delegate_to: localhost
 ...

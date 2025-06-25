@@ -1,0 +1,13 @@
+- name: "Get first VM ID"
+  ansible.builtin.shell: vim-cmd vmsvc/getallvms | awk 'NR==2 {print $1}'
+  register: first_vmid
+
+- name: "Get URL of vmid datastore"
+  ansible.builtin.shell: vim-cmd vmsvc/get.datastores {{ first_vmid.stdout | trim }} | grep '^url' | awk '{print $2}'
+  register: url
+  when: first_vmid.stdout | length > 0
+
+- name: "Set target_folder to datastore URL"
+  ansible.builtin.set_fact:
+    datastore_url: "{{ datastore_url.stdout | trim }}"
+  when: url.stdout | length > 0

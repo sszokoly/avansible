@@ -1,0 +1,31 @@
+---
+-
+  hosts: localhost
+  gather_facts: false
+  gather_subset: min
+
+  tasks:
+    - name: "'src'"
+      ansible.builtin.debug:
+        msg: "{{ src }}"
+
+    - name: "set 'src'"
+      ansible.builtin.set_fact:
+        src_file: "{{ src }}"
+
+    - name: "'src_file'"
+      ansible.builtin.debug:
+        msg: "{{ src_file }}"
+
+-
+  hosts: labavp
+  gather_facts: false
+
+  tasks:
+    - name: "set new 'src_file'"
+      ansible.builtin.set_fact:
+        src_file: 'source_file'
+
+    - name: "'src_file'"
+      ansible.builtin.debug:
+        msg: "{{ src_file }}"
