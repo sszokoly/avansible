@@ -1,0 +1,140 @@
+---
+- name: Setting input variables
+  hosts: localhost
+  gather_facts: false
+
+  tasks:
+    - name: "Fail if 'src' file argument is not in --extra-vars"
+      when: src is not defined
+      ansible.builtin.fail:
+        msg: "'src' file argument is not in --extra-vars"
+
+    - name: "Set 'staging_host' variable, defaults to 'localhost'"
+      ansible.builtin.set_fact:
+        target: "{{ target | default('ASP') }}"
+
+    - name: "Fail if 'target' is not ASP"
+      when: target not in groups and target not in groups['ASP']
+      ansible.builtin.fail:
+        msg: "'{{ target }}' is not a valid host/group in the inventory"
+
+    - name: "Get timestamp from system"
+      ansible.builtin.shell: "date +%Y%m%d_%H%M%S"
+      register: timestamp
+
+    - name: "Set 'outfile' variable"
+      ansible.builtin.set_fact:
+        outfile: "{{ outfile | default('result_update_asp__' + src + '__' + timestamp.stdout + '.out') }}"
+
+- name: Updating ASPs
+  hosts: "{{ hostvars['localhost']['target'] }}"
+  throttle: "{{ 3 if hostvars['localhost']['throttle'] is not defined else hostvars['localhost']['throttle'] }}"
+  gather_facts: false
+
+  pre_tasks:
+    - name: "Import variables from hostvars"
+      ansible.builtin.set_fact:
+        outfile: "{{ hostvars['localhost']['outfile'] }}"
+
+    - name: "Check if host is reachable"
+      ansible.builtin.ping:
+      ignore_unreachable: true
+      register: ping_result
+      delegate_to: "{{ inventory_hostname }}"
+      failed_when: false
+
+    - name: Handle unreachable host
+      when: ping_result.unreachable is defined and ping_result.unreachable
+      block:
+        - name: Mark host as unreachable in report
+          ansible.builtin.shell: |
+            echo '{{ inventory_hostname }},1,"unreachable"' >> {{ outfile }}
+          delegate_to: localhost
+        - meta: end_host
+
+  tasks:
+    - name: "Outer block with rescue"
+      block:
+        - name: "Get first VM ID"
+          ansible.builtin.shell: vim-cmd vmsvc/getallvms | awk 'NR==2 {print $1}'
+          register: vmid
+
+        - name: "Get URL of datastore of that vmid"
+          ansible.builtin.shell: vim-cmd vmsvc/get.datastores {{ vmid.stdout | trim }} | grep '^url' | awk '{print $2}'
+          register: datastore_url1
+          when: vmid.stdout | length > 0
+
+        - name: "Get largest datastore if vmid is not available"
+          ansible.builtin.shell: esxcli storage filesystem list | awk 'NR>2 {print $1" "$2" "$6}' | sort -rgk3 | awk 'NR==1 {print $1}'
+          register: datastore_url2
+          when: vmid.stdout | length == 0
+
+        - name: "Set target_folder to datastore URL"
+          ansible.builtin.set_fact:
+            datastore: "{{
+                datastore_url1.stdout | trim if datastore_url1 is defined else
+                datastore_url2.stdout | trim if datastore_url2 is defined else
+                '/vmfs/volumes/datastore1'
+              }}"
+
+        - name: "Get file status for '{{ src }}'"
+          ansible.builtin.stat:
+            path: "{{ datastore }}/{{ src }}"
+          register: src_info
+
+        - name: "Fail if '{{ src }}' does not exist"
+          when: not src_info.stat.exists
+          ansible.builtin.fail:
+            msg: "'{{ inventory_hostname }}:{{ datastore }}/{{ src }}' does not exist"
+
+        - name: "Unzip '{{ src }}'"
+          ansible.builtin.shell: unzip -o {{ src }}
+          args:
+            chdir: "{{ datastore }}"
+          register: unzip_result
+
+        - name: "Set 'avaya_zip' and 'asp_script' facts"
+          vars:
+            extracted_files: "{{ unzip_result.stdout | regex_findall('inflating: ([^\\n]+)') }}"
+          ansible.builtin.set_fact:
+            avaya_zip: "{{ extracted_files | select('match', '.*\\.zip$') | list | first | default('') }}"
+            asp_script: "{{ extracted_files | select('match', '.*\\.sh$') | list | first | default('')}}"
+
+        # - name: "TEST: Replace VERSION_ASP strings"
+        #   ansible.builtin.shell: sed -i "s|VERSION_ASP=5.1.0.6.0|VERSION_ASP=5.1.0.7.0|1" aspupdate.sh
+        #   args:
+        #     chdir: "{{ datastore }}"
+
+        # - name: "TEST: Comment out apply_upgrade"
+        #   ansible.builtin.shell: sed -i "s|apply_upgrade $1|#apply_upgrade $1|1" aspupdate.sh
+        #   args:
+        #     chdir: "{{ datastore }}"
+
+        - name: "Run 'asp_script' with 'avaya_zip'"
+          ansible.builtin.shell: echo "Y" | {{ datastore }}/{{ asp_script }} {{ datastore }}/{{ avaya_zip }}
+          args:
+            chdir: "{{ datastore }}"
+          register: asp_script_result
+          when: avaya_zip | length > 0 and asp_script | length > 0
+
+        - name: "Debug"
+          ansible.builtin.debug:
+            msg: "{{ asp_script_result.stdout }}"
+
+        - name: "Append host to '{{ outfile }}' with success"
+          ansible.builtin.shell: |
+            echo '{{ inventory_hostname }},0,' >> {{ outfile }}
+          delegate_to: localhost
+
+      rescue:
+        - name: "Append host to '{{ outfile }}' with failure"
+          vars:
+            error: "{{
+                ansible_failed_result.stderr_lines | join(' ') if ansible_failed_result.stderr | length > 0 else
+                ansible_failed_result.stdout_lines | join(' ') if ansible_failed_result.stdout | length > 0 else
+                'generic failure'
+              }}"
+          ansible.builtin.shell: |
+            echo '{{ inventory_hostname }},{{ ansible_failed_result.rc }},"{{ error }}"' >> {{ outfile }}
+          delegate_to: localhost
+...
