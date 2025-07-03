@@ -1,0 +1,58 @@
+---
+- name: Setting input variables
+  hosts: localhost
+  gather_facts: false
+
+  tasks:
+    - name: "Set 'target' variable, defaults to 'ASP'"
+      ansible.builtin.set_fact:
+        target: "{{ target | default('ASP') }}"
+
+- name: Clean ASP datastore
+  hosts: "{{ hostvars['localhost']['target'] }}"
+  order: sorted
+  serial: 10
+  gather_facts: false
+
+  tasks:
+    - name: "Outer block with rescue"
+      block:
+        - name: "Get 1st VM ID"
+          ansible.builtin.shell: vim-cmd vmsvc/getallvms | awk 'NR==2 {print $1}'
+          register: vmid
+
+        - name: "Get URL of datastore of vmid"
+          ansible.builtin.shell: vim-cmd vmsvc/get.datastores {{ vmid.stdout | trim }} | grep '^url' | awk '{print $2}'
+          register: datastore_url1
+          when: vmid.stdout | length > 0
+
+        - name: "Get largest datastore if vmid is not available"
+          ansible.builtin.shell: esxcli storage filesystem list | awk 'NR>2 {print $1" "$2" "$6}' | sort -rgk3 | awk 'NR==1 {print $1}'
+          register: datastore_url2
+          when: vmid.stdout | length == 0
+
+        - name: "Set datastore fact"
+          ansible.builtin.set_fact:
+            datastore: "{{
+                datastore_url1.stdout | trim if datastore_url1 is defined else
+                datastore_url2.stdout | trim if datastore_url2 is defined else
+                '/vmfs/volumes/datastore1'
+              }}"
+
+        - name: Find all update files in datastore
+          ansible.builtin.find:
+            paths: "{{ datastore }}"
+            file_type: file
+            use_regex: false
+            patterns:
+              - 'aspupdate.sh'
+              - 'upgrade-asp-s8300-*.zip'
+              - 'avaya-asp-*.zip'
+          register: log_files
+
+        - name: Delete found files
+          ansible.builtin.file:
+            path: "{{ item.path }}"
+            state: absent
+          loop: "{{ log_files.files }}"
+...

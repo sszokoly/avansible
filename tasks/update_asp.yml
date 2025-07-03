@@ -1,4 +1,20 @@
 ---
+# This playbook updates Avaya ASPs specificed by target group / host(s).
+# Extra Vars (--extra-vars):
+# - `src`: ASP update file name that has been already uploaded to the ASP datastore
+# - `target`: Target group or host(s) from inventory.
+# - `serial`: Optional number of hosts to update at the same time (default is 10).
+# - `outfile`: Optional filename to write result of updates per host (default is result_update_asp__<src>__<datetime in iso8601>.out).
+
+# Example usage:
+# ansible-playbook update_asp.yml --extra-vars "\
+#   src=upgrade-asp-s8300-5.1.0.5.0-01.zip \
+#   target=ASP \
+#   serial=10 \
+#   outfile=result_uploads.txt"
+#
+# SPDX-License-Identifier: GPL-3.0-or-later
+
 - name: Setting input variables
   hosts: localhost
   gather_facts: false
@@ -9,14 +25,9 @@
       ansible.builtin.fail:
         msg: "'src' file argument is not in --extra-vars"
 
-    - name: "Set 'staging_host' variable, defaults to 'localhost'"
+    - name: "Set 'target' variable, defaults to 'ASP'"
       ansible.builtin.set_fact:
         target: "{{ target | default('ASP') }}"
-
-    - name: "Fail if 'target' is not ASP"
-      when: target not in groups and target not in groups['ASP']
-      ansible.builtin.fail:
-        msg: "'{{ target }}' is not a valid host/group in the inventory"
 
     - name: "Get timestamp from system"
       ansible.builtin.shell: "date +%Y%m%d_%H%M%S"
@@ -28,7 +39,8 @@
 
 - name: Updating ASPs
   hosts: "{{ hostvars['localhost']['target'] }}"
-  throttle: "{{ 3 if hostvars['localhost']['throttle'] is not defined else hostvars['localhost']['throttle'] }}"
+  serial: "{{ 10 if hostvars['localhost']['serial'] is not defined else hostvars['localhost']['serial'] }}"
+  order: sorted
   gather_facts: false
 
   pre_tasks:
@@ -40,11 +52,10 @@
       ansible.builtin.ping:
       ignore_unreachable: true
       register: ping_result
-      delegate_to: "{{ inventory_hostname }}"
       failed_when: false
 
     - name: Handle unreachable host
-      when: ping_result.unreachable is defined and ping_result.unreachable
+      when: ping_result.failed | default(false)
       block:
         - name: Mark host as unreachable in report
           ansible.builtin.shell: |
@@ -55,11 +66,11 @@
   tasks:
     - name: "Outer block with rescue"
       block:
-        - name: "Get first VM ID"
+        - name: "Get 1st VM ID"
           ansible.builtin.shell: vim-cmd vmsvc/getallvms | awk 'NR==2 {print $1}'
           register: vmid
 
-        - name: "Get URL of datastore of that vmid"
+        - name: "Get URL of datastore of vmid"
           ansible.builtin.shell: vim-cmd vmsvc/get.datastores {{ vmid.stdout | trim }} | grep '^url' | awk '{print $2}'
           register: datastore_url1
           when: vmid.stdout | length > 0
@@ -69,7 +80,7 @@
           register: datastore_url2
           when: vmid.stdout | length == 0
 
-        - name: "Set target_folder to datastore URL"
+        - name: "Set datastore fact"
           ansible.builtin.set_fact:
             datastore: "{{
                 datastore_url1.stdout | trim if datastore_url1 is defined else
@@ -98,28 +109,19 @@
             extracted_files: "{{ unzip_result.stdout | regex_findall('inflating: ([^\\n]+)') }}"
           ansible.builtin.set_fact:
             avaya_zip: "{{ extracted_files | select('match', '.*\\.zip$') | list | first | default('') }}"
-            asp_script: "{{ extracted_files | select('match', '.*\\.sh$') | list | first | default('')}}"
+            asp_script: "{{ extracted_files | select('match', '.*\\.sh$') | list | first | default('') }}"
 
-        # - name: "TEST: Replace VERSION_ASP strings"
-        #   ansible.builtin.shell: sed -i "s|VERSION_ASP=5.1.0.6.0|VERSION_ASP=5.1.0.7.0|1" aspupdate.sh
-        #   args:
-        #     chdir: "{{ datastore }}"
-
-        # - name: "TEST: Comment out apply_upgrade"
-        #   ansible.builtin.shell: sed -i "s|apply_upgrade $1|#apply_upgrade $1|1" aspupdate.sh
-        #   args:
-        #     chdir: "{{ datastore }}"
-
-        - name: "Run 'asp_script' with 'avaya_zip'"
+        - name: "Run '{{ asp_script }} {{ avaya_zip }}'"
           ansible.builtin.shell: echo "Y" | {{ datastore }}/{{ asp_script }} {{ datastore }}/{{ avaya_zip }}
           args:
             chdir: "{{ datastore }}"
           register: asp_script_result
           when: avaya_zip | length > 0 and asp_script | length > 0
 
-        - name: "Debug"
-          ansible.builtin.debug:
-            msg: "{{ asp_script_result.stdout }}"
+        - name: "Fail if stdout does not contain 'patch installation complete'"
+          ansible.builtin.fail:
+            msg: "Patch installation did not complete successfully!"
+          when: asp_script_result.stdout is not search('patch installation complete')
 
         - name: "Append host to '{{ outfile }}' with success"
           ansible.builtin.shell: |

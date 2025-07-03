@@ -1,0 +1,101 @@
+---
+- name: Set input variables
+  hosts: localhost
+  gather_facts: false
+
+  tasks:
+    - name: "Set 'target' variable, defaults to 'ASP'"
+      ansible.builtin.set_fact:
+        target: "{{ target | default('ASP') }}"
+
+    - name: "Set 'snapshot_name' variable, defaults to 'ansible'"
+      ansible.builtin.set_fact:
+        snapshot_name: "{{ snapshot_name | default('ansible') }}"
+
+    - name: "Get timestamp from system"
+      ansible.builtin.shell: "date +%Y%m%d_%H%M%S"
+      register: timestamp
+
+    - name: "Set 'outfile' variable"
+      ansible.builtin.set_fact:
+        outfile: "{{ outfile | default('delete_esxi_snapshot_' + timestamp.stdout + '.out') }}"
+
+- name: Delete snapshot
+  hosts: "{{ hostvars['localhost']['target'] }}"
+  throttle: "{{ 5 if hostvars['localhost']['throttle'] is not defined else hostvars['localhost']['throttle'] }}"
+  order: sorted
+  gather_facts: false
+
+  pre_tasks:
+    - name: "Import variables from hostvars"
+      ansible.builtin.set_fact:
+        outfile: "{{ hostvars['localhost']['outfile'] }}"
+        snapshot_name: "{{ hostvars['localhost']['snapshot_name'] }}"
+
+    - name: "Check if host is reachable"
+      ansible.builtin.ping:
+      ignore_unreachable: true
+      register: ping_result
+      failed_when: false
+
+    - name: Handle unreachable host
+      when: ping_result.failed | default(false)
+      block:
+        - name: Mark host as unreachable in report
+          ansible.builtin.shell: |
+            echo '{{ inventory_hostname }},1,"unreachable"' >> {{ outfile }}
+          delegate_to: localhost
+        - meta: end_host
+
+  tasks:
+    - name: "Outer block with rescue"
+      block:
+        - name: "Get VMs"
+          community.vmware.vmware_vm_info:
+            hostname: "{{ ansible_host }}"
+            username: "{{ ansible_user }}"
+            password: "{{ ansible_ssh_pass }}"
+            validate_certs: false
+          register: vm_facts
+          delegate_to: localhost
+
+        - name: "Delete ESXi {{ snapshot_name }} snapshot"
+          community.vmware.vmware_guest_snapshot:
+            hostname: "{{ ansible_host }}"
+            username: "{{ ansible_user }}"
+            password: "{{ ansible_ssh_pass }}"
+            datacenter: "{{ item.datacenter }}"
+            folder: "{{ item.folder }}"
+            name: "{{ item.guest_name }}"
+            snapshot_name: "{{ snapshot_name }}"
+            description: "Snapshot taken by ansible playbook"
+            state: absent
+            validate_certs: false
+          register: snapshot_result
+          delegate_to: localhost
+          with_items: "{{ vm_facts.virtual_machines }}"
+
+        - name: "Fail if snapshot deletion failed"
+          when: snapshot_result.results | selectattr('failed') | list | length > 0
+          ansible.builtin.fail:
+            msg: "At last one snapshot deletion failed"
+          delegate_to: localhost
+
+        - name: "Append host to '{{ outfile }}' with success"
+          ansible.builtin.shell: |
+            echo '{{ inventory_hostname }},0,success' >> {{ outfile }}
+          delegate_to: localhost
+
+      rescue:
+        - name: "Append host to '{{ outfile }}' with failure"
+          vars:
+            error: "{{
+                ansible_failed_result.msg if ansible_failed_result.msg | length > 0 else
+                ansible_failed_result.stderr_lines | join(' ') if ansible_failed_result.stderr is defined else
+                ansible_failed_result.stdout_lines | join(' ') if ansible_failed_result.stdout is defined else
+                'failure'
+              }}"
+          ansible.builtin.shell: |
+            echo '{{ inventory_hostname }},1,"{{ error }}"' >> {{ outfile }}
+          delegate_to: localhost
+...
