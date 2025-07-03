@@ -4,13 +4,13 @@
 # Extra Vars (--extra-vars):
 # - `src`: The patch file name assumed to be already uploaded to the target hosts.
 # - `target`: Optional target host(s) or group or from inventory where 'src' will be installed on (defaults to 'SM').
-# - `target_folder`: Optional folder on the target hosts where the file resides (defaults to ~).
+# - `target_folder`: Optional folder on the target hosts where the file resides (defaults to '~').
 # - `throttle`: Optional number of tasks to run at the same time (defaults to 5).
 # - `outfile`: Optional filename to write result of uploads per host (defaults to 'result_update_asm__<src>__<datetime in iso8601>.out').
 
 # Example usage:
 # ansible-playbook update_asm.yml --extra-vars "\
-#   src=<patch file name> \
+#   src=<patch file name on target> \
 #   target=<target host(s)/group> \
 #   target_folder=</path/to/target_folder> \
 #   throttle=3 \
@@ -61,16 +61,16 @@
         src_basename: "{{ hostvars['localhost']['src_basename'] }}"
         target_folder: "{{ hostvars['localhost']['target_folder'] }}"
 
-    - name: "Check if host is reachable"
+    - name: "Check if target is reachable"
       ansible.builtin.ping:
       ignore_unreachable: true
       register: ping_results
       failed_when: false
 
-    - name: "Handle unreachable host"
+    - name: "Handle unreachable target"
       when: ping_result.failed | default(false)
       block:
-        - name: "Mark host as unreachable"
+        - name: "Mark target as unreachable"
           ansible.builtin.shell: |
             echo '{{ inventory_hostname }},1,"unreachable"' >> {{ outfile }}
           delegate_to: localhost
@@ -83,33 +83,33 @@
           ansible.builtin.setup:
             gather_subset: "min"
 
-        - name: "Get 'Call Processing' version"
+        - name: "Get 'Call Processing' version on target"
           ansible.builtin.shell: swversion | grep 'Call Processing' | awk '{print $3}'
           register: call_processing_version
 
-        - name: "Fail if patch is already installed"
+        - name: "Fail if patch is already installed on target"
           when: src_basename is search(call_processing_version.stdout)
           ansible.builtin.fail:
             msg: "Patch already installed"
           delegate_facts: true
 
-        - name: "Get '/opt/Avaya/lock' file status"
+        - name: "Get file status for '/opt/Avaya/lock' on target"
           ansible.builtin.stat:
             path: "/opt/Avaya/lock"
           register: lock_file_info
 
-        - name: "Fail if '/opt/Avaya/lock' file exists"
+        - name: "Fail if '/opt/Avaya/lock' exists on target"
           when: lock_file_info.stat.exists
           ansible.builtin.fail:
-            msg: "'/opt/Avaya/lock' file exists, another install may be running"
+            msg: "'/opt/Avaya/lock' exists, another install may be running"
           delegate_facts: true
 
-        - name: "Get active calls"
+        - name: "Get active calls on target"
           become: true
           ansible.builtin.shell: sm console 'GET AllCallCountSM' | grep -oP 'A=\K\d+'
           register: active_calls
 
-        - name: "Fail if there are active calls"
+        - name: "Fail if there are active calls on target"
           when: active_calls.stdout | int > 0 or active_calls.stdout is not defined
           ansible.builtin.fail:
             msg: "There are {{ active_calls.stdout | int }} active calls on the system"
@@ -120,17 +120,17 @@
           ansible.builtin.set_fact:
             target_folder: "{{ ansible_user_dir }}"
 
-        - name: "Get file status for '{{ target_folder }}/{{ src_basename }}' on targets"
+        - name: "Get file status for '{{ target_folder }}/{{ src_basename }}' on target"
           ansible.builtin.stat:
             path: "{{ target_folder }}/{{ src_basename }}"
           register: target_file_info
 
-        - name: "Fail if '{{ src_basename }}' does not exist"
+        - name: "Fail if '{{ src_basename }}' does not exist on target"
           when: not target_file_info.stat.exists
           ansible.builtin.fail:
             msg: "'{{ src_basename }}' does not exist"
 
-        - name: "Run 'patchSM -i {{ target_folder }}/{{ src_basename }}' on target host"
+        - name: "Run 'patchSM -i {{ target_folder }}/{{ src_basename }}' on target"
           ansible.builtin.shell: |
             spawn ssh -q -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o ConnectTimeout=10 {{ ansible_user }}@{{ ansible_host }}
             expect "assword: "
@@ -139,7 +139,7 @@
 
             send "patchSM -i {{ target_folder }}/{{ src_basename }}\n"
 
-            set timeout 300
+            set timeout 900
             expect {
               "*Press any key to read the EULA.*" {
                 send " "
@@ -152,6 +152,10 @@
                 puts stderr "Another install currently running"
                 exit 1
               }
+              timeout {
+                puts stderr "Timeout while waiting for EULA"
+                exit 1
+              }
             }
 
             set timeout 1
@@ -159,14 +163,14 @@
             set counter 0
             while {$counter < $max_spaces} {
               expect {
-                  "Do you accept the terms of this EULA? (Y)es/(N)o:*" {
-                      send "y\n"
-                      break
-                  }
-                  timeout {
-                      send " "
-                      incr counter
-                  }
+                "Do you accept the terms of this EULA? (Y)es/(N)o:*" {
+                    send "y\n"
+                    break
+                }
+                timeout {
+                    send " "
+                    incr counter
+                }
               }
             }
 
@@ -176,26 +180,21 @@
                 send "y\n"
               }
               timeout {
-                puts stderr "Timeout"
+                puts stderr "Timeout while waiting for confirmation request to proceed"
                 exit 1
               }
             }
 
-            set timeout 10
-            set max_counter 360
-            set counter 0
-            while {$counter < $max_counter} {
-              expect {
-                "Installation completed*" {
-                    break
-                }
-                timeout {
-                    incr counter
-                }
+            set timeout 1800
+            expect {
+              "Installation completed*" {
+                  exit 0
+              }
+              timeout {
+                puts stderr "Timeout while waiting for installation to complete"
+                exit 1
               }
             }
-
-            exit 0
           args:
             executable: /usr/bin/expect
           delegate_to: localhost
@@ -209,17 +208,17 @@
 
         - name: "Append host to '{{ outfile }}' with success"
           ansible.builtin.shell: |
-            echo '{{ inventory_hostname }},0,Installation completed' >> {{ outfile }}
+            echo '{{ inventory_hostname }},0,success' >> {{ outfile }}
           delegate_to: localhost
 
       rescue:
         - name: "Append host to '{{ outfile }}' with failure"
           vars:
             error: "{{
-                ansible_failed_result.msg if ansible_failed_result.msg | length > 0 else
                 ansible_failed_result.stderr_lines | join(' ') if ansible_failed_result.stderr is defined else
+                ansible_failed_result.msg if ansible_failed_result.msg | length > 0 else
                 ansible_failed_result.stdout_lines | join(' ') if ansible_failed_result.stdout is defined else
-                'generic failure'
+                'failure'
               }}"
           ansible.builtin.shell: |
             echo '{{ inventory_hostname }},1,"{{ error }}"' >> {{ outfile }}

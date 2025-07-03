@@ -125,7 +125,7 @@
 
         - name: "Append host to '{{ outfile }}' with success"
           ansible.builtin.shell: |
-            echo '{{ inventory_hostname }},0,' >> {{ outfile }}
+            echo '{{ inventory_hostname }},0,success' >> {{ outfile }}
           delegate_to: localhost
 
       rescue:
@@ -134,7 +134,7 @@
             error: "{{
                 ansible_failed_result.stderr_lines | join(' ') if ansible_failed_result.stderr | length > 0 else
                 ansible_failed_result.stdout_lines | join(' ') if ansible_failed_result.stdout | length > 0 else
-                'generic failure'
+                'failure'
               }}"
           ansible.builtin.shell: |
             echo '{{ inventory_hostname }},{{ ansible_failed_result.rc }},"{{ error }}"' >> {{ outfile }}
