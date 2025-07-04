@@ -130,16 +130,20 @@
           ansible.builtin.fail:
             msg: "'{{ src_basename }}' does not exist"
 
+        - name: "Remove /tmp/tmp*.patch files"
+          become: true
+          ansible.builtin.shell: rm -Rf /tmp/tmp*.patch
+
         - name: "Run 'patchSM -i {{ target_folder }}/{{ src_basename }}' on target"
           ansible.builtin.shell: |
             spawn ssh -q -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o ConnectTimeout=10 {{ ansible_user }}@{{ ansible_host }}
-            expect "assword: "
+            expect "Password: "
             send "{{ ansible_ssh_pass }}\n"
             expect "~]$ "
 
             send "patchSM -i {{ target_folder }}/{{ src_basename }}\n"
 
-            set timeout 900
+            set timeout 1200
             expect {
               "*Press any key to read the EULA.*" {
                 send " "
@@ -158,7 +162,7 @@
               }
             }
 
-            set timeout 1
+            set timeout 2
             set max_spaces 14
             set counter 0
             while {$counter < $max_spaces} {
@@ -174,18 +178,10 @@
               }
             }
 
-            sleep 20
-            expect {
-              "(y/N)?*" {
-                send "y\n"
-              }
-              timeout {
-                puts stderr "Timeout while waiting for confirmation request to proceed"
-                exit 1
-              }
-            }
+            sleep 60
+            send "y\n"
 
-            set timeout 1800
+            set timeout 2400
             expect {
               "Installation completed*" {
                   exit 0
@@ -199,11 +195,12 @@
             executable: /usr/bin/expect
           delegate_to: localhost
           register: patchSM_result
+          failed_when: false
 
         - name: "Fail if 'Installation completed' is not in result"
           when: "'Installation completed' not in patchSM_result.stdout"
           ansible.builtin.fail:
-            msg: "failed"
+            msg: "'Installation completed' is not in result"
           delegate_to: localhost
 
         - name: "Append host to '{{ outfile }}' with success"

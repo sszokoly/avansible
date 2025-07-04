@@ -140,10 +140,10 @@ def run_module():
     else:
         bgw = {
             'device_type': 'avaya_vsp',
-            'ip': '10.10.48.58',
+            'ip': '10.42.244.1',
             'port': str(22),
             'username': 'root',
-            'password': 'R00t01',
+            'password': 'cmb@Dm1n',
         }
         cmd = sys.argv[1] if len(sys.argv) > 1 else 'show image version'
     

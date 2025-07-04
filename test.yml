@@ -109,11 +109,11 @@
 #   roles:
 #     - esxi
 
-- hosts: amm
-  gather_facts: False
-  ignore_unreachable: true
-  ignore_errors: true
-  roles:
-    - base
-    - amm
+# - hosts: amm
+#   gather_facts: False
+#   ignore_unreachable: true
+#   ignore_errors: true
+#   roles:
+#     - base
+#     - amm
 ...

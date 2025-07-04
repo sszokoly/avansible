@@ -1,0 +1,143 @@
+---
+- name: Setting input variables
+  hosts: localhost
+  gather_facts: false
+
+  tasks:
+    - name: "Fail if 'g430' firmware name argument is not in --extra-vars"
+      when: g430 is not defined
+      ansible.builtin.fail:
+        msg: "'g430' firmware name argument is not in --extra-vars"
+
+    - name: "Fail if 'g430v3' firmware name argument is not in --extra-vars"
+      when: g430v3 is not defined
+      ansible.builtin.fail:
+        msg: "'g430v3' firmware name argument is not in --extra-vars"
+
+    - name: "Fail if 'g450' firmware name argument is not in --extra-vars"
+      when: g450 is not defined
+      ansible.builtin.fail:
+        msg: "'g450' firmware name argument is not in --extra-vars"
+
+    - name: "Fail if 'g450v4' firmware name argument is not in --extra-vars"
+      when: g450v4 is not defined
+      ansible.builtin.fail:
+        msg: "'g450v4' firmware name argument is not in --extra-vars"
+
+    - name: "Fail if 'scp_server' server IP argument is not in --extra-vars"
+      when: scp_server is not defined
+      ansible.builtin.fail:
+        msg: "'scp_server' server IP argument is not in --extra-vars"
+
+    - name: "Fail if 'scp_username' argument is not in --extra-vars"
+      when: scp_username is not defined
+      ansible.builtin.fail:
+        msg: "'scp_username' argument is not in --extra-vars"
+
+    - name: "Fail if 'scp_password' argument is not in --extra-vars"
+      when: scp_password is not defined
+      ansible.builtin.fail:
+        msg: "'scp_password' argument is not in --extra-vars"
+
+    - name: "Set 'scp_folder' variable, defaults to ''"
+      ansible.builtin.set_fact:
+        scp_folder: "{{ scp_folder | default('') }}"
+
+    - name: "Set 'target' variable, defaults to 'BGW'"
+      ansible.builtin.set_fact:
+        target: "{{ target | default('BGW') }}"
+
+    - name: "Set 'reset' variable, defaults to 'false'"
+      ansible.builtin.set_fact:
+        reset: "{{ reset | default(false) }}"
+
+-
+  #### Update BGW ####
+  hosts: "{{ hostvars['localhost']['target'] }}"
+  serial: "{{ 3 if hostvars['localhost']['serial'] is not defined else hostvars['localhost']['serial'] }}"
+  gather_facts: false
+
+  tasks:
+    - name: "Import variables from hostvars"
+      ansible.builtin.set_fact:
+        g430: "{{ hostvars['localhost']['g430'] }}"
+        g430v3: "{{ hostvars['localhost']['g430v3'] }}"
+        g450: "{{ hostvars['localhost']['g450'] }}"
+        g450v4: "{{ hostvars['localhost']['g450v4'] }}"
+        scp_server: "{{ hostvars['localhost']['scp_server'] }}"
+        scp_username: "{{ hostvars['localhost']['scp_username'] }}"
+        scp_password: "{{ hostvars['localhost']['scp_password'] }}"
+        scp_folder: "{{ hostvars['localhost']['scp_folder'] }}"
+        reset: "{{ hostvars['localhost']['reset'] }}"
+
+    - name: "Get 'show system' from target host"
+      avaya_bgw_raw:
+        host: "{{ ansible_host }}"
+        username: "{{ ansible_user }}"
+        password: "{{ ansible_ssh_pass }}"
+        cmd: "show system"
+      register: show_system_result
+      delegate_to: localhost
+
+    - name: "Set 'model' fact"
+      vars:
+        model_regex: ".*Model.*: ([^ \n]+)"
+        model_res: "{{ show_system_result.stdout | regex_search(model_regex, '\\1') }}"
+      ansible.builtin.set_fact:
+        model: "{{ model_res | first | lower }}"
+      delegate_to: localhost
+
+    - name: "Get 'show image version' from target host"
+      avaya_bgw_raw:
+        host: "{{ ansible_host }}"
+        username: "{{ ansible_user }}"
+        password: "{{ ansible_ssh_pass }}"
+        cmd: "show image version"
+      register: show_image_version_result
+      delegate_to: localhost
+
+    - name: "Set 'target_bank' fact"
+      ansible.builtin.set_fact:
+        target_bank: "{{ (show_image_version_result.stdout_lines | reject('search', 'current') | list | last)[0] }}"
+      delegate_to: localhost
+
+    - name: "Set 'sw_image' and 'filename' fact"
+      ansible.builtin.set_fact:
+        sw_image: "SW_image{{ target_bank }}"
+        filename: "{{
+            [scp_folder, g430v3] | path_join if model == 'g430v3' else
+            [scp_folder, g450v4] | path_join if model == 'g450v4' else
+            [scp_folder, g450]   | path_join if model == 'g450' else
+            [scp_folder, g430]   | path_join if model == 'g430' else
+            ''
+          }}"
+      delegate_to: localhost
+
+    - name: "Run 'copy scp SW_image' on target"
+      ansible.builtin.shell: |
+        spawn ssh -q -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o ConnectTimeout=10 {{ ansible_user }}@{{ ansible_host }}
+        expect "Password: "
+        send "{{ ansible_ssh_pass }}\n"
+        expect ")# "
+
+        set timeout 3
+        send "show mg l\n"
+        expect {
+          ")# " {
+            exit 0
+          }
+          timeout {
+            puts stderr "Timeout while waiting for copy to return"
+            exit 1
+          }
+        }
+      args:
+        executable: /usr/bin/expect
+      delegate_to: localhost
+      register: copy_scp_result
+      failed_when: false
+
+    - name: "Debug"
+      debug:
+        msg: "copy_scp: {{ copy_scp_result }}"
+...
