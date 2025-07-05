@@ -1,0 +1,16 @@
+- hosts: localhost
+  gather_facts: false
+  vars:
+    test_output: |
+      Some other output
+      Failure display  : (null)
+      Something else
+
+  tasks:
+    - name: Test regex_search
+      ansible.builtin.set_fact:
+        failure_display: "{{ test_output | regex_search('Failure display  : (.*)', '\\1') }}"
+
+    - name: Show result
+      debug:
+        var: failure_display

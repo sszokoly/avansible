@@ -51,93 +51,229 @@
       ansible.builtin.set_fact:
         reset: "{{ reset | default(false) }}"
 
+    - name: "Get timestamp from system"
+      ansible.builtin.shell: "date +%Y%m%d_%H%M%S"
+      register: timestamp
+
+    - name: "Set 'outfile' variable"
+      ansible.builtin.set_fact:
+        outfile: "{{ outfile | default('result_update_bgw__' + timestamp.stdout + '.out') }}"
+
 -
-  #### Update BGW ####
   hosts: "{{ hostvars['localhost']['target'] }}"
-  serial: "{{ 3 if hostvars['localhost']['serial'] is not defined else hostvars['localhost']['serial'] }}"
+  serial: "{{ 2 if hostvars['localhost']['serial'] is not defined else hostvars['localhost']['serial'] }}"
   gather_facts: false
 
   tasks:
-    - name: "Import variables from hostvars"
-      ansible.builtin.set_fact:
-        g430: "{{ hostvars['localhost']['g430'] }}"
-        g430v3: "{{ hostvars['localhost']['g430v3'] }}"
-        g450: "{{ hostvars['localhost']['g450'] }}"
-        g450v4: "{{ hostvars['localhost']['g450v4'] }}"
-        scp_server: "{{ hostvars['localhost']['scp_server'] }}"
-        scp_username: "{{ hostvars['localhost']['scp_username'] }}"
-        scp_password: "{{ hostvars['localhost']['scp_password'] }}"
-        scp_folder: "{{ hostvars['localhost']['scp_folder'] }}"
-        reset: "{{ hostvars['localhost']['reset'] }}"
+    - name: "Outer block with rescue"
+      block:
+        - name: "Import variables from hostvars"
+          ansible.builtin.set_fact:
+            g430: "{{ hostvars['localhost']['g430'] }}"
+            g430v3: "{{ hostvars['localhost']['g430v3'] }}"
+            g450: "{{ hostvars['localhost']['g450'] }}"
+            g450v4: "{{ hostvars['localhost']['g450v4'] }}"
+            scp_server: "{{ hostvars['localhost']['scp_server'] }}"
+            scp_username: "{{ hostvars['localhost']['scp_username'] }}"
+            scp_password: "{{ hostvars['localhost']['scp_password'] }}"
+            scp_folder: "{{ hostvars['localhost']['scp_folder'] }}"
+            reset: "{{ hostvars['localhost']['reset'] }}"
+            outfile: "{{ hostvars['localhost']['outfile'] }}"
 
-    - name: "Get 'show system' from target host"
-      avaya_bgw_raw:
-        host: "{{ ansible_host }}"
-        username: "{{ ansible_user }}"
-        password: "{{ ansible_ssh_pass }}"
-        cmd: "show system"
-      register: show_system_result
-      delegate_to: localhost
+        - name: "Run 'show system' on target"
+          avaya_bgw_raw:
+            host: "{{ ansible_host }}"
+            username: "{{ ansible_user }}"
+            password: "{{ ansible_ssh_pass }}"
+            cmd: "show system"
+          register: show_system_result
+          delegate_to: localhost
 
-    - name: "Set 'model' fact"
-      vars:
-        model_regex: ".*Model.*: ([^ \n]+)"
-        model_res: "{{ show_system_result.stdout | regex_search(model_regex, '\\1') }}"
-      ansible.builtin.set_fact:
-        model: "{{ model_res | first | lower }}"
-      delegate_to: localhost
+        - name: "Fail if show_system_result is not defined"
+          when: show_system_result is not defined or show_system_result.stdout | length == 0
+          ansible.builtin.fail:
+            msg: "Connection to {{ ansible_host }} failed"
+          delegate_facts: true
 
-    - name: "Get 'show image version' from target host"
-      avaya_bgw_raw:
-        host: "{{ ansible_host }}"
-        username: "{{ ansible_user }}"
-        password: "{{ ansible_ssh_pass }}"
-        cmd: "show image version"
-      register: show_image_version_result
-      delegate_to: localhost
+        - name: "Set 'model' fact"
+          vars:
+            model_regex: ".*Model.*: ([^ \n]+)"
+            model_res: "{{ show_system_result.stdout | regex_search(model_regex, '\\1') }}"
+          ansible.builtin.set_fact:
+            model: "{{ model_res | first | lower }}"
+          delegate_to: localhost
 
-    - name: "Set 'target_bank' fact"
-      ansible.builtin.set_fact:
-        target_bank: "{{ (show_image_version_result.stdout_lines | reject('search', 'current') | list | last)[0] }}"
-      delegate_to: localhost
+        - name: "Run 'show image version' on target"
+          avaya_bgw_raw:
+            host: "{{ ansible_host }}"
+            username: "{{ ansible_user }}"
+            password: "{{ ansible_ssh_pass }}"
+            cmd: "show image version"
+          register: show_image_version_result
+          delegate_to: localhost
 
-    - name: "Set 'sw_image' and 'filename' fact"
-      ansible.builtin.set_fact:
-        sw_image: "SW_image{{ target_bank }}"
-        filename: "{{
-            [scp_folder, g430v3] | path_join if model == 'g430v3' else
-            [scp_folder, g450v4] | path_join if model == 'g450v4' else
-            [scp_folder, g450]   | path_join if model == 'g450' else
-            [scp_folder, g430]   | path_join if model == 'g430' else
-            ''
-          }}"
-      delegate_to: localhost
+        - name: "Set 'target_bank' fact"
+          ansible.builtin.set_fact:
+            target_bank: "{{ (show_image_version_result.stdout_lines | reject('search', 'current') | list | last)[0] }}"
+          delegate_to: localhost
 
-    - name: "Run 'copy scp SW_image' on target"
-      ansible.builtin.shell: |
-        spawn ssh -q -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o ConnectTimeout=10 {{ ansible_user }}@{{ ansible_host }}
-        expect "Password: "
-        send "{{ ansible_ssh_pass }}\n"
-        expect ")# "
+        - name: "Set 'target_bank_firmware' fact"
+          ansible.builtin.set_fact:
+            target_bank_firmware: "{{ (show_image_version_result.stdout_lines | reject('search', 'current') | list | last | split | last ) }}"
+          delegate_to: localhost
 
-        set timeout 3
-        send "show mg l\n"
-        expect {
-          ")# " {
-            exit 0
-          }
-          timeout {
-            puts stderr "Timeout while waiting for copy to return"
-            exit 1
-          }
-        }
-      args:
-        executable: /usr/bin/expect
-      delegate_to: localhost
-      register: copy_scp_result
-      failed_when: false
+        - name: "Set 'sw_image' and 'firmware' fact"
+          ansible.builtin.set_fact:
+            sw_image: "SW_image{{ target_bank }}"
+            firmware: "{{
+                g430v3 if model == 'g430v3' else
+                g450v4 if model == 'g450v4' else
+                g450   if model == 'g450' else
+                g430   if model == 'g430' else
+                ''
+              }}"
+          delegate_to: localhost
 
-    - name: "Debug"
-      debug:
-        msg: "copy_scp: {{ copy_scp_result }}"
+        - name: "Set 'filename' fact"
+          ansible.builtin.set_fact:
+            filename: "{{ [scp_folder, firmware] | path_join }}"
+          delegate_to: localhost
+
+        - name: "Stage firmware on target if not already staged"
+          when: firmware is not search(target_bank_firmware)
+          block:
+            - name: "Run 'copy scp SW_image' on target"
+              ansible.builtin.shell: |
+                spawn ssh -q -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o ConnectTimeout=10 {{ ansible_user }}@{{ ansible_host }}
+                expect "Password: "
+                send "{{ ansible_ssh_pass }}\n"
+                expect ")# "
+
+                set timeout 3
+                send "copy scp {{ sw_image }} {{ filename }} {{ scp_server }}\n"
+                expect {
+                  "want to continue (Y/N)?*" {
+                    send "y\n"
+                  }
+                  timeout {
+                    puts stderr "Timeout while waiting for confirmation request to continue"
+                    exit 1
+                  }
+                }
+
+                expect {
+                  "Username:*" {
+                    send "{{ scp_username }}\n"
+                  }
+                  timeout {
+                    puts stderr "Timeout while waiting for prompt for Username"
+                    exit 1
+                  }
+                }
+
+                expect {
+                  "Password:*" {
+                    send "{{ scp_password }}\n"
+                  }
+                  timeout {
+                    puts stderr "Timeout while waiting for prompt for Password"
+                    exit 1
+                  }
+                }
+
+                expect ")# "
+                send "exit\n"
+              args:
+                executable: /usr/bin/expect
+              register: copy_scp_result
+              delegate_to: localhost
+              failed_when: false
+
+            - name: "Pause for 60 seconds to allow the copy to get started on target"
+              ansible.builtin.pause:
+                seconds: 60
+              delegate_to: localhost
+
+            - name: "Keep running 'show download software status 10' every 30 seconds on target until idle or 20 retries"
+              avaya_bgw_raw:
+                host: "{{ ansible_host }}"
+                username: "{{ ansible_user }}"
+                password: "{{ ansible_ssh_pass }}"
+                cmd: "show download software status 10"
+              register: show_download_software_status_10
+              until: "'Running state    : Idle' in show_download_software_status_10.stdout"
+              retries: 20
+              delay: 30
+              delegate_to: localhost
+
+            - name: "Set 'failure_display' fact"
+              ansible.builtin.set_fact:
+                failure_display: "{{ (show_download_software_status_10.stdout | regex_search('Failure display  : (.*)', '\\1'))[0] | trim }}"
+              delegate_to: localhost
+
+            - name: "Fail if 'failure_display' is not '(null)'"
+              when: failure_display != '(null)'
+              ansible.builtin.fail:
+                msg: "{{ failure_display }}"
+              delegate_to: localhost
+
+        - name: "Run 'set boot bank' on target"
+          avaya_bgw_raw:
+            host: "{{ ansible_host }}"
+            username: "{{ ansible_user }}"
+            password: "{{ ansible_ssh_pass }}"
+            cmd: "set boot bank bank-{{ target_bank }}"
+          register: set_boot_bank
+          delegate_to: localhost
+
+        - name: "Run 'reset' on target"
+          when: reset
+          ansible.builtin.shell: |
+            spawn ssh -q -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o ConnectTimeout=10 {{ ansible_user }}@{{ ansible_host }}
+            expect "Password: "
+            send "{{ ansible_ssh_pass }}\n"
+            expect ")# "
+
+            set timeout 5
+            send "reset\n"
+            expect {
+              "want to continue (Y/N)?*" {
+                send "y\n"
+              }
+              timeout {
+                puts stderr "Timeout while waiting for confirmation request to continue"
+                exit 1
+              }
+            }
+
+            expect ")# "
+            send "exit\n"
+          args:
+            executable: /usr/bin/expect
+          register: reset_result
+          delegate_to: localhost
+
+        - name: "Fail if 'set boot bank' was not run"
+          when: set_boot_bank is not defined or set_boot_bank.stdout | length == 0
+          ansible.builtin.fail:
+            msg: "Firmware installation on {{ ansible_host }} failed"
+          delegate_to: localhost
+
+        - name: "Append host to '{{ outfile }}' with success"
+          ansible.builtin.shell: |
+            echo '{{ inventory_hostname }},0,success' >> {{ outfile }}
+          delegate_to: localhost
+
+      rescue:
+        - name: "Append host to '{{ outfile }}' with failure"
+          vars:
+            error: "{{
+                ansible_failed_result.stderr_lines | join(' ') if ansible_failed_result.stderr is defined else
+                ansible_failed_result.msg if ansible_failed_result.msg | length > 0 else
+                ansible_failed_result.stdout_lines | join(' ') if ansible_failed_result.stdout is defined else
+                'failure'
+              }}"
+          ansible.builtin.shell: |
+            echo '{{ inventory_hostname }},1,"{{ error }}"' >> {{ outfile }}
+          delegate_to: localhost
 ...
